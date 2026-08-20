@@ -19,7 +19,7 @@ def seed_synthetic_data(
     Seed the database with synthetic banking data for the hackathon.
     Generates ~250 mock records across multiple source systems and processes them.
     """
-    result = IngestionService.seed_synthetic_data(db)
+    result = IngestionService.seed_synthetic_data(db, current_user)
     return result
 
 @router.post("/upload", response_model=Dict[str, Any])
@@ -31,5 +31,5 @@ def upload_records(
     """
     Upload and process a batch of records from an external source system.
     """
-    result = IngestionService.process_records(db, records)
+    result = IngestionService.process_records(db, records, current_user)
     return result

@@ -6,12 +6,14 @@ from datetime import datetime
 
 from app.schemas.ingest import IngestRecord
 from app.db.models.source_record import SourceRecord
+from app.db.models.audit import AuditLog
+from app.db.models.user import User
 from app.services.standardizer import StandardizerService
 from app.services.embeddings import EmbeddingService
 
 class IngestionService:
     @staticmethod
-    def process_records(db: Session, records: List[IngestRecord]) -> Dict[str, Any]:
+    def process_records(db: Session, records: List[IngestRecord], current_user: User) -> Dict[str, Any]:
         """
         Process a list of IngestRecords: standardizes fields, generates embeddings,
         and saves them to the source_records table.
@@ -86,19 +88,32 @@ class IngestionService:
         # Final commit
         db.commit()
         
+        # Audit Log
+        audit_log = AuditLog(
+            actor_id=current_user.id if current_user else None,
+            actor_role=current_user.role.value if current_user else "SYSTEM",
+            action_type="DATA_INGESTION",
+            entity_type="SourceRecord",
+            description=f"Ingested {processed_count} records. Skipped {skipped_count} duplicates."
+        )
+        db.add(audit_log)
+        db.commit()
+        
         return {
-            "status": "success",
-            "processed": processed_count,
-            "skipped": skipped_count,
-            "total": len(records)
+            "customers_created": processed_count,
+            "accounts_created": processed_count, # Simplified 1:1 mapping for the mock
+            "embeddings_generated": processed_count,
+            "duplicates_skipped": skipped_count
         }
 
     @staticmethod
-    def seed_synthetic_data(db: Session) -> Dict[str, Any]:
+    def seed_synthetic_data(db: Session, current_user: User) -> Dict[str, Any]:
         """
         Generates synthetic data and processes it.
         Creates ~250 mock records simulating different source systems.
         """
+        random.seed(42) # Deterministic fake data for hackathon judges
+        
         source_systems = ["CORE_BANKING", "CREDIT_CARD", "WEALTH_MGMT", "LOAN_SYS", "CRM"]
         cities = ["Mumbai", "Delhi", "Bengaluru", "Chennai", "Pune", "Gurugram"]
         segments = ["RETAIL", "HNI", "CORPORATE", "SME"]
@@ -168,4 +183,4 @@ class IngestionService:
             
             base_id += 1
             
-        return IngestionService.process_records(db, records_to_ingest)
+        return IngestionService.process_records(db, records_to_ingest, current_user)

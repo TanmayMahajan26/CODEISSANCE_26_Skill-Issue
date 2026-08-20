@@ -42,9 +42,11 @@ def test_ingestion_flow():
     result = response.json()
     print(f"Seed successful. Result: {result}")
     
-    assert result["status"] == "success"
-    assert result["total"] > 0
-    assert result["processed"] + result["skipped"] == result["total"]
+    assert "customers_created" in result
+    assert "accounts_created" in result
+    assert "embeddings_generated" in result
+    assert "duplicates_skipped" in result
+    assert result["customers_created"] > 0
     
     print("Ingestion pipeline seeded and verified successfully!")
 
