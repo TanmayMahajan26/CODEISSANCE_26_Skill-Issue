@@ -1,0 +1,30 @@
+source_record_id,name,pan,mobile,email,dob,city
+EQUITY-0001,Pouja Menon,CYAGG7374N,07450195342,pooja.m@company.co.in,19-08-1989,Madras
+EQUITY-0002,LAKSHMI PATIL,DHUJK5581S,+91-6994443931,lakshmi55@yahoo.com,17-05-1960,bangalore
+EQUITY-0003,Vxjay Choudhury,ZWTLS9741V,7070551789,vijay.c@gmail.com,09-08-1976,Bangalore
+EQUITY-0004,Grnesh Mishra,EYCFL5308O,+91-8067376984,ganesh.mishra@yahoo.com,03/06/1999,PUNE
+EQUITY-0005,Divya Kulkarni,LCSNN6265U,07761343426,,06/11/1966,bangalore
+EQUITY-0006,Rrvi Menon,BBBJM1130F,+917499759972,ravi.menon@hotmail.com,,HYDERABAD
+EQUITY-0007,Larshmi Mishra,,80044-45533,lmishra@hotmail.com,02/09/1985,BENGALURU
+EQUITY-0008,S. Deshpande,QQBBD 4009L,+91 88629 29756,sneha.d@outlook.com,19-05-1996,bangalore
+EQUITY-0009,Kavitha Bhat,BGAEI7087P,+91 82813 10549,kavitha.bhat@gmail.com,28/08/1962,MUMBAI
+EQUITY-0010,P. Banerjee,KGYWQ0705L,+91 98691 49662,POOJA@company.co.in,28/10/1983,Bangalore
+EQUITY-0011,Amit A. Mukherjee,VGGYD5263O,8104651383,amit.mukherjee@hotmail.com,1981-08-20,Bombay
+EQUITY-0012,Vikrxm Mukherjee,HIEZP9314G,06433676208,vikram27@gmail.com,1986-03-15,HYDERABAD
+EQUITY-0013,Vijay Menon,OBQVK6812K,88846-73162,VIJAY@gmail.com,22/06/1996,bangalore
+EQUITY-0014,Rajesh Deshpande,CZCHQ8922K,06709106467,rajesh.d@outlook.com,02/10/1961,Poona
+EQUITY-0015,A. Kulkarni,IYCXW0296N,09382981580,akulkarni@company.co.in,,Bangalore
+EQUITY-0016,S. Rao,SJOCC3256A,+917252008520,,1974-12-02,pune
+EQUITY-0017,Swati Chakraborty,FMUSP1661D,89640-11628,swati.chakraborty@hotmail.com,23-02-1989,CHENNAI
+EQUITY-0018,Nisha Das,YDHWD6686I,06236800605,nisha.d@gmail.com,17/07/1984,bangalore
+EQUITY-0019,Sunita Shankar Nair,FLWRQ9854Z,08063746198,snair@company.co.in,1988-06-29,Madras
+EQUITY-0020,Dbvya Joshi,AECTK7998C,7040060722,divya.joshi@company.co.in,,Bombay
+EQUITY-0021,Dirya Mehta,,8532202701,divya.mehta@hotmail.com,,KOLKATA
+EQUITY-0022,M. Srinivasan,,916309415646,,23-09-1960,CHENNAI
+EQUITY-0023,Amit Nair,QYAZA6010L,6483485232,AMIT@yahoo.com,1966-06-23,kolkata
+EQUITY-0024,Arun Pillai,PYPKZ3228H,+916316277479,arun93@gmail.com,,Bombay
+EQUITY-0025,rekha raghavan,WLSAR 2402A,61296-14215,,1986-04-04,CHENNAI
+EQUITY-EXTRA-0001,Sunita Tiwari,SPTSW6803U,+91-6666682072,stiwari@yahoo.com,1987-03-19,Bangalore
+EQUITY-EXTRA-0002,Manoj Joshi,QQPLX4656P,+91 92594 41044,manoj90@yahoo.com,,Delhi
+EQ-CONFLICT-001,Vikram Mehta,BBBBB1111B,9999988888,vikram.mehta@gmail.com,1985-03-15,Mumbai
+EQ-MATCH-003,Rohita Raghavan,ABCDE1234F,+91 98765 43210,rohita@gmail.com,1988-06-12,Bangalore
