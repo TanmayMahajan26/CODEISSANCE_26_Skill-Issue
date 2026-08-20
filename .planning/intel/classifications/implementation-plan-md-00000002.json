@@ -1,0 +1,24 @@
+{
+  "source_path": "c:/Users/admin/Documents/Codeissance26_Skill-Issue/implementation_plan.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "IdentityForge — Architecture & Technical Implementation Plan",
+  "summary": "Technical specification and system architecture for IdentityForge Customer 360 & Opportunity Engine using FastAPI, Next.js, pgvector, and Groq/Llama 3.1.",
+  "scope": [
+    "FastAPI Backend",
+    "Next.js App Router Frontend",
+    "Supabase PostgreSQL + pgvector",
+    "Upstash Redis",
+    "SentenceTransformers & Groq RAG",
+    "D3.js Identity Graph",
+    "Data Standardization & Blocking Pipeline",
+    "3-Phase Matching Engine",
+    "BRE & What-If Simulator",
+    "Synthetic Data Generator"
+  ],
+  "cross_refs": ["PRD.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Acts as technical specification and architecture blueprint supporting PRD.md"
+}
