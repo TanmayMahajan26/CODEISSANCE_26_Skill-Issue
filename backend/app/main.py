@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.core.config import get_settings
-from app.api import auth
+from app.api import auth, ingest
 
 settings = get_settings()
 
@@ -15,3 +15,4 @@ def health_check():
     return {"status": "ok", "app_name": settings.APP_NAME}
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(ingest.router, prefix="/api/ingest", tags=["ingestion"])
