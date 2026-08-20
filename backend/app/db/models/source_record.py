@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, String, DateTime, Date, Float, Text
+from sqlalchemy import Column, Integer, String, DateTime, Date, Float, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from pgvector.sqlalchemy import Vector
+from sqlalchemy.orm import relationship
 from app.db.models.base import Base
 
 
@@ -39,7 +40,9 @@ class SourceRecord(Base):
     vector_embedding = Column(Vector(384), nullable=True)
 
     # Lineage
-    golden_record_id = Column(Integer, nullable=True, index=True)
+    golden_record_id = Column(Integer, ForeignKey("golden_records.id"), nullable=True, index=True)
+    
+    golden_record = relationship("GoldenRecord", back_populates="source_records")
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(

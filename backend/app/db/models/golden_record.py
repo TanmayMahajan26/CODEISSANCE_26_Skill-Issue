@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Column, Integer, String, DateTime, Float, Text
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY
+from sqlalchemy.orm import relationship
 from app.db.models.base import Base
 
 
@@ -31,6 +32,9 @@ class GoldenRecord(Base):
     # Match metadata
     match_confidence = Column(Float, nullable=True)
     confidence_breakdown = Column(JSONB, nullable=True)
+    
+    # Relationships
+    source_records = relationship("SourceRecord", back_populates="golden_record")
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(

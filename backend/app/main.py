@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.core.config import get_settings
-from app.api import auth, ingest
+from app.api import auth, ingest, ai, resolution
 
 settings = get_settings()
 
@@ -16,3 +16,5 @@ def health_check():
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(ingest.router, prefix="/api/ingest", tags=["ingestion"])
+app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
+app.include_router(resolution.router, prefix="/api/resolution", tags=["resolution"])
