@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # ── PostgreSQL Database with pgvector Support ──────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: nexus360-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword123
+      POSTGRES_DB: nexus360
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Nexus360 FastAPI Backend ────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nexus360-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword123@postgres:5432/nexus360
+      - DATABASE_URL_SYNC=postgresql://postgres:postgrespassword123@postgres:5432/nexus360
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - SECRET_KEY=nexus360-hackathon-super-secret-jwt-key-2026-financial-ai
+      - MATCH_THRESHOLD=0.85
+      - REVIEW_THRESHOLD=0.60
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
