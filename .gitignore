@@ -1,15 +1,26 @@
-# Environment variables
+# GSD & Planning Internal Files
+.agent/
+.planning/
+
+# Docs & Specifications (Internal)
+Industry.pdf
+MENTORING_SUMMARY.md
+PRD.md
+implementation_plan.md
+
+# Scratch & Verification Scripts
+backend/scratch_test.py
+backend/verify_*.py
+
+# Environment & Config
 .env
 *.env
 backend/.env
 
-# Python
+# Python Virtual Environments & Cache
 __pycache__/
 *.py[cod]
 *$py.class
 venv/
 .venv/
 backend/venv/
-
-# Scratch & temporary test scripts
-backend/scratch_test.py
