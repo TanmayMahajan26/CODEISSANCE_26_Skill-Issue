@@ -17,7 +17,7 @@ BOLNA_API_KEY = os.getenv("BOLNA_API_KEY", "bn-5d61aad059d54aaa8a087e4ad4b5de08"
 BOLNA_AGENT_ID = os.getenv("BOLNA_AGENT_ID", "eb9494b9-3d3d-4111-aa12-27bfac34a0a3")
 BOLNA_API_URL = "https://api.bolna.dev/call"
 
-async def trigger_ai_verification(db: AsyncSession, review_id: int, admin_username: str) -> ReviewCase:
+async def trigger_ai_verification(db: AsyncSession, review_id: int, admin_username: str, target_phone: str = None) -> ReviewCase:
     """
     Triggers an AI phone call for a verification case that is AI_VERIFICATION_ELIGIBLE.
     """
@@ -31,11 +31,13 @@ async def trigger_ai_verification(db: AsyncSession, review_id: int, admin_userna
     decision = await db.get(MatchDecision, review.match_decision_id)
     rec_a = await db.get(SourceRecord, decision.record_a_id)
     
-    # Retrieve the phone number to call (prefer rec_a mobile)
-    phone_number = rec_a.original_mobile or rec_a.normalized_mobile
+    # Retrieve the phone number to call
+    phone_number = target_phone
     if not phone_number:
-        phone_number = "+1234567890"  # fallback for demo
-        
+        phone_number = rec_a.original_mobile or rec_a.normalized_mobile
+        if not phone_number:
+            phone_number = "+1234567890"  # fallback for demo
+            
     if not phone_number.startswith("+"):
         phone_number = f"+{phone_number}"
         

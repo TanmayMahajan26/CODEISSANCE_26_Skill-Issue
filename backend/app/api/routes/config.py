@@ -9,8 +9,10 @@ POST /api/v1/config/rules/impact-preview   What-If simulator impact preview (ADM
 
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+import subprocess
+import os
 
 from app.api.deps import get_client_ip, require_roles
 from app.core.database import get_db
@@ -109,3 +111,17 @@ async def impact_preview(
 ):
     """Preview the impact of changing a matching threshold or rule value before applying."""
     return await config_service.preview_impact(db, payload.rule_key, payload.new_value)
+
+@router.post(
+    "/reset-demo",
+    summary="Reset Demo Data (Hackathon)",
+)
+async def reset_demo_data():
+    """Wipe database and re-seed demo data."""
+    try:
+        script_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "scripts", "seed_demo_data.py")
+        subprocess.run(["python", script_path], check=True)
+        return {"message": "Demo data reset successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

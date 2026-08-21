@@ -13,13 +13,14 @@ import {
   Cpu
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getMatchingStats } from '../api';
+import { getMatchingStats, resetDemoData } from '../api';
 import { formatNumber, formatPercent } from '../utils/formatters';
 
 export function DashboardOverview({ onNavigate }) {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [resetting, setResetting] = useState(false);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -36,6 +37,21 @@ export function DashboardOverview({ onNavigate }) {
   useEffect(() => {
     fetchStats();
   }, []);
+  const handleResetDemo = async () => {
+    if (window.confirm("This will restore all demo records, review decisions and verification statuses to their original state.")) {
+      setResetting(true);
+      try {
+        await resetDemoData();
+        await fetchStats();
+        alert("Demo data reset successfully.");
+      } catch (err) {
+        console.error(err);
+        alert("Failed to reset demo data.");
+      } finally {
+        setResetting(false);
+      }
+    }
+  };
 
   const totalSourceRecords = stats?.total_source_records ?? 12450;
   const goldenCustomers = stats?.total_golden_records ?? stats?.golden_customers ?? 4890;
@@ -59,6 +75,16 @@ export function DashboardOverview({ onNavigate }) {
         </div>
 
         <div className="flex items-center gap-3">
+          {user?.role === 'ADMIN' && (
+            <button
+              onClick={handleResetDemo}
+              disabled={resetting}
+              className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 rounded-xl text-sm font-semibold transition-all flex items-center gap-2"
+            >
+              {resetting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+              Reset Demo Data
+            </button>
+          )}
           <button
             onClick={fetchStats}
             title="Refresh statistics"

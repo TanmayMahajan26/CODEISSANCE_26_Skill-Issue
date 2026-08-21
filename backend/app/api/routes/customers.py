@@ -1,28 +1,16 @@
-"""
-Nexus360 — Customer Endpoints.
-
-GET /api/v1/customers                        List golden customers
-GET /api/v1/customers/search                 Search customers by query
-GET /api/v1/customers/{golden_customer_id}   Get customer 360 detail with lineage
-GET /api/v1/customers/{golden_customer_id}/graph      D3.js identity graph data
-GET /api/v1/customers/{golden_customer_id}/waterfall  Confidence waterfall data
-"""
-
-from typing import List, Optional, Dict, Any
-
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Optional
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import select, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.models.golden_customer import GoldenCustomer
-from app.models.identity_link import IdentityLink
 from app.models.source_record import SourceRecord
-from app.models.match_decision import MatchDecision
+from app.models.match_case import MatchCase
 from app.schemas.golden_customer import GoldenCustomerResponse, GoldenCustomerDetail
 
 router = APIRouter(tags=["Customers"])
-
 
 @router.get(
     "/customers",
@@ -35,21 +23,18 @@ async def list_customers(
     search: Optional[str] = Query(None, description="Search by name, PAN, mobile, or email"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Retrieve all golden (unified) customer records."""
     query = select(GoldenCustomer).offset(skip).limit(limit)
 
     if search:
         search_term = f"%{search.lower()}%"
         query = query.where(
             or_(
-                func.lower(GoldenCustomer.canonical_name).like(search_term),
-                func.lower(GoldenCustomer.golden_customer_id).like(search_term),
-                func.lower(GoldenCustomer.assigned_rm_id).like(search_term),
-                func.lower(GoldenCustomer.canonical_pan).like(search_term),
-                func.lower(GoldenCustomer.canonical_mobile).like(search_term),
-                func.lower(GoldenCustomer.canonical_email).like(search_term),
-                func.lower(GoldenCustomer.canonical_city).like(search_term),
-                func.lower(GoldenCustomer.canonical_segment).like(search_term),
+                func.lower(GoldenCustomer.full_name).like(search_term),
+                func.lower(GoldenCustomer.golden_id).like(search_term),
+                func.lower(GoldenCustomer.pan_masked).like(search_term),
+                func.lower(GoldenCustomer.mobile_masked).like(search_term),
+                func.lower(GoldenCustomer.email).like(search_term),
+                func.lower(GoldenCustomer.city).like(search_term),
             )
         )
 
@@ -61,27 +46,24 @@ async def list_customers(
 @router.get(
     "/customers/search",
     response_model=List[GoldenCustomerResponse],
-    summary="Search customers by name, PAN, mobile, email, RM ID, or Golden Customer ID",
+    summary="Search customers",
 )
 async def search_customers(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """Dedicated customer search endpoint."""
     search_term = f"%{q.lower()}%"
     query = (
         select(GoldenCustomer)
         .where(
             or_(
-                func.lower(GoldenCustomer.canonical_name).like(search_term),
-                func.lower(GoldenCustomer.golden_customer_id).like(search_term),
-                func.lower(GoldenCustomer.assigned_rm_id).like(search_term),
-                func.lower(GoldenCustomer.canonical_pan).like(search_term),
-                func.lower(GoldenCustomer.canonical_mobile).like(search_term),
-                func.lower(GoldenCustomer.canonical_email).like(search_term),
-                func.lower(GoldenCustomer.canonical_city).like(search_term),
-                func.lower(GoldenCustomer.canonical_segment).like(search_term),
+                func.lower(GoldenCustomer.full_name).like(search_term),
+                func.lower(GoldenCustomer.golden_id).like(search_term),
+                func.lower(GoldenCustomer.pan_masked).like(search_term),
+                func.lower(GoldenCustomer.mobile_masked).like(search_term),
+                func.lower(GoldenCustomer.email).like(search_term),
+                func.lower(GoldenCustomer.city).like(search_term),
             )
         )
         .limit(limit)
@@ -91,464 +73,102 @@ async def search_customers(
 
 
 @router.get(
-    "/customers/identity-graph/all",
-    summary="Get enterprise multi-customer identity graph network",
-)
-async def get_all_identity_graph_data(
-    search: Optional[str] = Query(None, description="Search by customer name, PAN, or Golden ID"),
-    source_system: Optional[str] = Query(None, description="Filter by source system"),
-    status_filter: Optional[str] = Query(None, description="Filter by status (MATCH, REVIEW, CONFLICT)"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Returns complete multi-customer node & edge network for interactive graph visualization."""
-    query = select(GoldenCustomer)
-    if search:
-        search_term = f"%{search.lower()}%"
-        query = query.where(
-            or_(
-                func.lower(GoldenCustomer.canonical_name).like(search_term),
-                func.lower(GoldenCustomer.golden_customer_id).like(search_term),
-                func.lower(GoldenCustomer.canonical_pan).like(search_term),
-                func.lower(GoldenCustomer.canonical_mobile).like(search_term),
-            )
-        )
-    query = query.order_by(GoldenCustomer.created_at.desc()).limit(50)
-    res = await db.execute(query)
-    golden_customers = res.scalars().all()
-
-    nodes = []
-    edges = []
-    seen_source_ids = set()
-
-    for golden in golden_customers:
-        # Fetch links
-        links_res = await db.execute(
-            select(IdentityLink).where(IdentityLink.golden_customer_id == golden.golden_customer_id)
-        )
-        links = links_res.scalars().all()
-
-        source_records_for_golden = []
-        for link in links:
-            src = await db.get(SourceRecord, link.source_record_id)
-            if src:
-                source_records_for_golden.append((src, link))
-
-        systems = list(set([src.source_system.value for src, _ in source_records_for_golden if src.source_system]))
-
-        # Golden Customer Node
-        nodes.append({
-            "id": golden.golden_customer_id,
-            "label": golden.canonical_name or golden.golden_customer_id,
-            "type": "GOLDEN",
-            "golden_customer_id": golden.golden_customer_id,
-            "canonical_name": golden.canonical_name,
-            "canonical_pan": golden.canonical_pan,
-            "canonical_mobile": golden.canonical_mobile,
-            "canonical_email": golden.canonical_email,
-            "canonical_city": golden.canonical_city,
-            "canonical_segment": golden.canonical_segment,
-            "total_relationship_value": float(golden.total_relationship_value or 0.0),
-            "assigned_rm_id": golden.assigned_rm_id or "rm_rajesh",
-            "match_confidence": golden.match_confidence or 1.0,
-            "status": golden.status.value if golden.status else "ACTIVE",
-            "source_count": len(source_records_for_golden),
-            "source_systems": systems,
-        })
-
-        for src, link in source_records_for_golden:
-            src_node_id = f"SRC-{src.id}"
-            sys_name = src.source_system.value if src.source_system else "UNKNOWN"
-
-            if source_system and source_system.upper() != "ALL" and sys_name.upper() != source_system.upper():
-                continue
-
-            if src.id not in seen_source_ids:
-                seen_source_ids.add(src.id)
-                nodes.append({
-                    "id": src_node_id,
-                    "label": src.original_name or f"Record #{src.id}",
-                    "type": "SOURCE",
-                    "source_record_id": src.source_record_id,
-                    "internal_id": src.id,
-                    "original_name": src.original_name,
-                    "original_pan": src.original_pan,
-                    "original_mobile": src.original_mobile,
-                    "original_email": src.original_email,
-                    "original_dob": src.original_dob,
-                    "original_city": src.original_city,
-                    "source_system": sys_name,
-                    "product_type": src.product_type,
-                    "segment": src.segment,
-                    "balance_aum": float(src.balance_aum) if src.balance_aum is not None else 0.0,
-                    "relationship_value": float(src.relationship_value) if src.relationship_value is not None else 0.0,
-                    "golden_customer_id": golden.golden_customer_id,
-                })
-
-            # Edge evidence evaluate
-            pan_st = "EXACT" if (golden.canonical_pan and src.original_pan and golden.canonical_pan == src.original_pan) else ("MISSING" if not src.original_pan or not golden.canonical_pan else "MISMATCH")
-            mob_st = "EXACT" if (golden.canonical_mobile and src.original_mobile and (golden.canonical_mobile in src.original_mobile or src.original_mobile in golden.canonical_mobile)) else ("MISSING" if not src.original_mobile or not golden.canonical_mobile else "MISMATCH")
-            email_st = "EXACT" if (golden.canonical_email and src.original_email and golden.canonical_email.lower() == src.original_email.lower()) else ("MISSING" if not src.original_email or not golden.canonical_email else "MISMATCH")
-            dob_st = "EXACT" if (golden.canonical_dob and src.original_dob and golden.canonical_dob == src.original_dob) else ("MISSING" if not src.original_dob or not golden.canonical_dob else "MISMATCH")
-
-            missing_list = []
-            if not src.original_pan: missing_list.append(f"PAN missing in {sys_name}")
-            if not src.original_mobile: missing_list.append(f"Mobile missing in {sys_name}")
-            if not src.original_email: missing_list.append(f"Email missing in {sys_name}")
-            if not src.original_dob: missing_list.append(f"DOB missing in {sys_name}")
-
-            link_status = link.status.value if link.status else "MATCH"
-            if pan_st == "MISMATCH":
-                link_status = "CONFLICT"
-
-            if status_filter and status_filter.upper() != "ALL" and link_status.upper() != status_filter.upper():
-                continue
-
-            edges.append({
-                "id": f"EDGE-{golden.golden_customer_id}-{src_node_id}",
-                "source": golden.golden_customer_id,
-                "target": src_node_id,
-                "confidence": link.match_confidence or 0.95,
-                "rule_score": 0.92 if pan_st == "EXACT" else 0.70,
-                "ai_score": 0.94 if email_st == "EXACT" or mob_st == "EXACT" else 0.82,
-                "final_score": link.match_confidence or 0.95,
-                "method": link.match_method.value if link.match_method else "DETERMINISTIC",
-                "status": link_status,
-                "pan_match": pan_st,
-                "mobile_match": mob_st,
-                "email_match": email_st,
-                "dob_match": dob_st,
-                "name_similarity": 0.96 if (golden.canonical_name and src.original_name and golden.canonical_name.split()[0].lower() in src.original_name.lower()) else 0.85,
-                "explanation": f"Unified into master record via {link.match_method.value if link.match_method else 'DETERMINISTIC'} pipeline with confidence {int((link.match_confidence or 0.95)*100)}%.",
-                "missing_fields": missing_list,
-                "golden_name": golden.canonical_name,
-                "source_name": src.original_name or f"Record #{src.id}",
-                "source_system": sys_name,
-            })
-
-    return {
-        "total_golden": len(golden_customers),
-        "total_nodes": len(nodes),
-        "total_edges": len(edges),
-        "nodes": nodes,
-        "edges": edges,
-    }
-
-
-@router.get(
-    "/customers/{golden_customer_id}",
+    "/customers/{golden_id}",
     response_model=GoldenCustomerDetail,
-    summary="Get Customer 360 profile",
+    summary="Get customer 360 detail",
 )
-async def get_customer(
-    golden_customer_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Retrieve a single Customer 360 golden record with lineage and holdings."""
+async def get_customer(golden_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(GoldenCustomer).where(GoldenCustomer.golden_customer_id == golden_customer_id)
+        select(GoldenCustomer).where(GoldenCustomer.golden_id == golden_id)
     )
-    golden = result.scalars().first()
+    customer = result.scalar_one_or_none()
+    if not customer:
+        # Fallback to ID
+        result = await db.execute(
+            select(GoldenCustomer).where(GoldenCustomer.id == int(golden_id) if golden_id.isdigit() else -1)
+        )
+        customer = result.scalar_one_or_none()
+        
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
 
-    if not golden:
-        raise HTTPException(status_code=404, detail=f"Golden customer '{golden_customer_id}' not found")
+    # Fetch source records manually for demo
+    source_records = []
+    if customer.source_record_ids:
+        pass
+    else:
+        # Fetch matching full names as dummy for now or just grab some
+        pass
+    
+    # Actually, in the demo DB they aren't linked via source_record_ids right now for some.
+    # We will just fetch all source records that match the PAN
+    if customer.pan_masked:
+        sr_res = await db.execute(select(SourceRecord).where(SourceRecord.pan == customer.pan_masked))
+        source_records = sr_res.scalars().all()
 
-    # Fetch linked source records
-    links_result = await db.execute(
-        select(IdentityLink).where(IdentityLink.golden_customer_id == golden_customer_id)
-    )
-    links = links_result.scalars().all()
-
-    linked_sources = []
-    for link in links:
-        src = await db.get(SourceRecord, link.source_record_id)
-        if src:
-            linked_sources.append({
-                "source_record_id": src.id,
-                "source_system": src.source_system.value if src.source_system else None,
-                "source_customer_id": src.source_record_id,
-                "original_name": src.original_name,
-                "original_mobile": src.original_mobile,
-                "original_email": src.original_email,
-                "original_pan": src.original_pan,
-                "original_city": src.original_city,
-                "segment": src.segment,
-                "product_type": src.product_type,
-                "balance_aum": float(src.balance_aum) if src.balance_aum is not None else 0.0,
-                "relationship_value": float(src.relationship_value) if src.relationship_value is not None else 0.0,
-                "match_confidence": link.match_confidence,
-                "match_method": link.match_method.value if link.match_method else None,
-                "status": link.status.value if link.status else None,
-                "linked_at": link.linked_at.isoformat() if link.linked_at else None,
-            })
-
-    return GoldenCustomerDetail(
-        id=golden.id,
-        golden_customer_id=golden.golden_customer_id,
-        canonical_name=golden.canonical_name,
-        canonical_dob=golden.canonical_dob,
-        canonical_mobile=golden.canonical_mobile,
-        canonical_email=golden.canonical_email,
-        canonical_pan=golden.canonical_pan,
-        canonical_city=golden.canonical_city,
-        canonical_segment=golden.canonical_segment,
-        total_relationship_value=golden.total_relationship_value,
-        products_held=golden.products_held or [],
-        source_record_ids=golden.source_record_ids or [],
-        attribute_provenance=golden.attribute_provenance or {},
-        match_confidence=golden.match_confidence or 1.0,
-        version=golden.version or 1,
-        status=golden.status.value if golden.status else "ACTIVE",
-        merged_into_id=golden.merged_into_id,
-        assigned_rm_id=golden.assigned_rm_id,
-        created_at=golden.created_at,
-        updated_at=golden.updated_at,
-        linked_sources=linked_sources,
-    )
-
+    # Build response
+    resp = GoldenCustomerDetail.model_validate(customer)
+    resp.source_records = [sr for sr in source_records]
+    return resp
 
 @router.get(
     "/customers/identity-graph/all",
-    summary="Get enterprise multi-customer identity graph network",
+    summary="Get full identity graph",
 )
-async def get_all_identity_graph_data(
-    search: Optional[str] = Query(None, description="Search by customer name, PAN, or Golden ID"),
-    source_system: Optional[str] = Query(None, description="Filter by source system"),
-    status_filter: Optional[str] = Query(None, description="Filter by status (MATCH, REVIEW, CONFLICT)"),
+async def get_identity_graph_all(
+    search: Optional[str] = None,
+    source_system: Optional[str] = None,
+    status_filter: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Returns complete multi-customer node & edge network for interactive graph visualization."""
-    query = select(GoldenCustomer)
+    # Fetch all golden customers
+    golden_query = select(GoldenCustomer)
     if search:
         search_term = f"%{search.lower()}%"
-        query = query.where(
-            or_(
-                func.lower(GoldenCustomer.canonical_name).like(search_term),
-                func.lower(GoldenCustomer.golden_customer_id).like(search_term),
-                func.lower(GoldenCustomer.canonical_pan).like(search_term),
-                func.lower(GoldenCustomer.canonical_mobile).like(search_term),
-            )
-        )
-    query = query.order_by(GoldenCustomer.created_at.desc()).limit(50)
-    res = await db.execute(query)
-    golden_customers = res.scalars().all()
+        golden_query = golden_query.where(or_(
+            func.lower(GoldenCustomer.full_name).like(search_term),
+            func.lower(GoldenCustomer.golden_id).like(search_term)
+        ))
+    
+    golden_res = await db.execute(golden_query)
+    golden_customers = golden_res.scalars().all()
+
+    # Fetch source records
+    sr_query = select(SourceRecord)
+    if source_system and source_system != 'ALL':
+        sr_query = sr_query.where(SourceRecord.source_system == source_system)
+    
+    sr_res = await db.execute(sr_query)
+    source_records = sr_res.scalars().all()
 
     nodes = []
     edges = []
-    seen_source_ids = set()
 
-    for golden in golden_customers:
-        # Fetch links
-        links_res = await db.execute(
-            select(IdentityLink).where(IdentityLink.golden_customer_id == golden.golden_customer_id)
-        )
-        links = links_res.scalars().all()
-
-        source_records_for_golden = []
-        for link in links:
-            src = await db.get(SourceRecord, link.source_record_id)
-            if src:
-                source_records_for_golden.append((src, link))
-
-        systems = list(set([src.source_system.value for src, _ in source_records_for_golden if src.source_system]))
-
-        # Golden Customer Node
+    for gc in golden_customers:
         nodes.append({
-            "id": golden.golden_customer_id,
-            "label": golden.canonical_name or golden.golden_customer_id,
+            "id": gc.golden_id,
             "type": "GOLDEN",
-            "golden_customer_id": golden.golden_customer_id,
-            "canonical_name": golden.canonical_name,
-            "canonical_pan": golden.canonical_pan,
-            "canonical_mobile": golden.canonical_mobile,
-            "canonical_email": golden.canonical_email,
-            "canonical_city": golden.canonical_city,
-            "canonical_segment": golden.canonical_segment,
-            "total_relationship_value": float(golden.total_relationship_value or 0.0),
-            "assigned_rm_id": golden.assigned_rm_id or "rm_rajesh",
-            "match_confidence": golden.match_confidence or 1.0,
-            "status": golden.status.value if golden.status else "ACTIVE",
-            "source_count": len(source_records_for_golden),
-            "source_systems": systems,
+            "source_system": "GOLDEN",
+            "label": gc.full_name or gc.golden_id,
+            "status": gc.status.value if gc.status else "ACTIVE"
         })
 
-        for src, link in source_records_for_golden:
-            src_node_id = f"SRC-{src.id}"
-            sys_name = src.source_system.value if src.source_system else "UNKNOWN"
-
-            if source_system and source_system.upper() != "ALL" and sys_name.upper() != source_system.upper():
-                continue
-
-            if src.id not in seen_source_ids:
-                seen_source_ids.add(src.id)
-                nodes.append({
-                    "id": src_node_id,
-                    "label": src.original_name or f"Record #{src.id}",
-                    "type": "SOURCE",
-                    "source_record_id": src.source_record_id,
-                    "internal_id": src.id,
-                    "original_name": src.original_name,
-                    "original_pan": src.original_pan,
-                    "original_mobile": src.original_mobile,
-                    "original_email": src.original_email,
-                    "original_dob": src.original_dob,
-                    "original_city": src.original_city,
-                    "source_system": sys_name,
-                    "product_type": src.product_type,
-                    "segment": src.segment,
-                    "balance_aum": float(src.balance_aum) if src.balance_aum is not None else 0.0,
-                    "relationship_value": float(src.relationship_value) if src.relationship_value is not None else 0.0,
-                    "golden_customer_id": golden.golden_customer_id,
-                })
-
-            # Edge evidence evaluate
-            pan_st = "EXACT" if (golden.canonical_pan and src.original_pan and golden.canonical_pan == src.original_pan) else ("MISSING" if not src.original_pan or not golden.canonical_pan else "MISMATCH")
-            mob_st = "EXACT" if (golden.canonical_mobile and src.original_mobile and (golden.canonical_mobile in src.original_mobile or src.original_mobile in golden.canonical_mobile)) else ("MISSING" if not src.original_mobile or not golden.canonical_mobile else "MISMATCH")
-            email_st = "EXACT" if (golden.canonical_email and src.original_email and golden.canonical_email.lower() == src.original_email.lower()) else ("MISSING" if not src.original_email or not golden.canonical_email else "MISMATCH")
-            dob_st = "EXACT" if (golden.canonical_dob and src.original_dob and golden.canonical_dob == src.original_dob) else ("MISSING" if not src.original_dob or not golden.canonical_dob else "MISMATCH")
-
-            missing_list = []
-            if not src.original_pan: missing_list.append(f"PAN missing in {sys_name}")
-            if not src.original_mobile: missing_list.append(f"Mobile missing in {sys_name}")
-            if not src.original_email: missing_list.append(f"Email missing in {sys_name}")
-            if not src.original_dob: missing_list.append(f"DOB missing in {sys_name}")
-
-            link_status = link.status.value if link.status else "MATCH"
-            if pan_st == "MISMATCH":
-                link_status = "CONFLICT"
-
-            if status_filter and status_filter.upper() != "ALL" and link_status.upper() != status_filter.upper():
-                continue
-
+    for sr in source_records:
+        nodes.append({
+            "id": sr.source_record_id,
+            "type": "SOURCE",
+            "source_system": sr.source_system.value if sr.source_system else "DEFAULT",
+            "label": sr.full_name or sr.source_record_id,
+            "status": "IMPORTED"
+        })
+        # Link to golden customer if PAN matches
+        matching_gc = next((g for g in golden_customers if g.pan_masked == sr.pan), None)
+        if matching_gc:
             edges.append({
-                "id": f"EDGE-{golden.golden_customer_id}-{src_node_id}",
-                "source": golden.golden_customer_id,
-                "target": src_node_id,
-                "confidence": link.match_confidence or 0.95,
-                "rule_score": 0.92 if pan_st == "EXACT" else 0.70,
-                "ai_score": 0.94 if email_st == "EXACT" or mob_st == "EXACT" else 0.82,
-                "final_score": link.match_confidence or 0.95,
-                "method": link.match_method.value if link.match_method else "DETERMINISTIC",
-                "status": link_status,
-                "pan_match": pan_st,
-                "mobile_match": mob_st,
-                "email_match": email_st,
-                "dob_match": dob_st,
-                "name_similarity": 0.96 if (golden.canonical_name and src.original_name and golden.canonical_name.split()[0].lower() in src.original_name.lower()) else 0.85,
-                "explanation": f"Unified into master record via {link.match_method.value if link.match_method else 'DETERMINISTIC'} pipeline with confidence {int((link.match_confidence or 0.95)*100)}%.",
-                "missing_fields": missing_list,
-                "golden_name": golden.canonical_name,
-                "source_name": src.original_name or f"Record #{src.id}",
-                "source_system": sys_name,
+                "source": sr.source_record_id,
+                "target": matching_gc.golden_id,
+                "confidence": 0.95
             })
 
-    return {
-        "total_golden": len(golden_customers),
-        "total_nodes": len(nodes),
-        "total_edges": len(edges),
-        "nodes": nodes,
-        "edges": edges,
-    }
+    return {"nodes": nodes, "edges": edges}
 
-
-@router.get(
-    "/customers/{golden_customer_id}/graph",
-    summary="Get D3.js force-directed identity graph data",
-)
-async def get_customer_identity_graph(
-    golden_customer_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Returns nodes (golden node + source system nodes) and edges formatted for D3.js graph visualization."""
-    res = await db.execute(select(GoldenCustomer).where(GoldenCustomer.golden_customer_id == golden_customer_id))
-    golden = res.scalars().first()
-    if not golden:
-        raise HTTPException(status_code=404, detail=f"Golden customer '{golden_customer_id}' not found")
-
-    links_res = await db.execute(
-        select(IdentityLink).where(IdentityLink.golden_customer_id == golden_customer_id)
-    )
-    links = links_res.scalars().all()
-
-    nodes = [{
-        "id": golden.golden_customer_id,
-        "name": golden.canonical_name or golden.golden_customer_id,
-        "type": "GOLDEN",
-        "group": "GOLDEN",
-        "value": float(golden.total_relationship_value or 0.0),
-    }]
-
-    edges = []
-    for link in links:
-        src = await db.get(SourceRecord, link.source_record_id)
-        if src:
-            node_id = f"SRC-{src.id}"
-            sys_name = src.source_system.value if src.source_system else "UNKNOWN"
-            nodes.append({
-                "id": node_id,
-                "name": src.original_name or src.source_record_id,
-                "type": "SOURCE",
-                "group": sys_name,
-                "source_system": sys_name,
-                "balance_aum": float(src.balance_aum) if src.balance_aum is not None else 0.0,
-            })
-            edges.append({
-                "source": golden.golden_customer_id,
-                "target": node_id,
-                "confidence": link.match_confidence,
-                "method": link.match_method.value if link.match_method else "DETERMINISTIC",
-                "status": link.status.value if link.status else "MATCH",
-            })
-
-    return {
-        "golden_customer_id": golden_customer_id,
-        "nodes": nodes,
-        "edges": edges,
-    }
-
-
-@router.get(
-    "/customers/{golden_customer_id}/waterfall",
-    summary="Get confidence waterfall breakdown",
-)
-async def get_customer_waterfall(
-    golden_customer_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Returns step-by-step contribution breakdown for confidence score visualization."""
-    res = await db.execute(select(GoldenCustomer).where(GoldenCustomer.golden_customer_id == golden_customer_id))
-    golden = res.scalars().first()
-    if not golden:
-        raise HTTPException(status_code=404, detail=f"Golden customer '{golden_customer_id}' not found")
-
-    links_res = await db.execute(
-        select(IdentityLink).where(IdentityLink.golden_customer_id == golden_customer_id)
-    )
-    links = links_res.scalars().all()
-    source_ids = [l.source_record_id for l in links]
-
-    decisions_breakdown = []
-    if len(source_ids) >= 2:
-        dec_res = await db.execute(
-            select(MatchDecision).where(
-                or_(
-                    MatchDecision.record_a_id.in_(source_ids),
-                    MatchDecision.record_b_id.in_(source_ids),
-                )
-            )
-        )
-        decisions = dec_res.scalars().all()
-        for d in decisions:
-            decisions_breakdown.append({
-                "match_decision_id": d.id,
-                "pair": (d.record_a_id, d.record_b_id),
-                "final_score": d.final_score,
-                "decision": d.decision.value,
-                "reasoning": d.reasoning,
-            })
-
-    return {
-        "golden_customer_id": golden_customer_id,
-        "overall_confidence": golden.match_confidence,
-        "attribute_provenance": golden.attribute_provenance,
-        "decisions_breakdown": decisions_breakdown,
-    }

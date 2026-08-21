@@ -99,7 +99,8 @@ export function ReviewQueuePage({ onNavigate }) {
         review_notes: 'Approved match after side-by-side KYC verification.',
       });
       setStatusMessage('Match decision APPROVED and synced to Golden Master.');
-      fetchReviews();
+      setReviewCases((prev) => prev.filter((r) => r.id !== selectedReview.id));
+      setSelectedReview(null);
     } catch (err) {
       alert(err.message || 'Approval failed');
     } finally {
@@ -116,7 +117,8 @@ export function ReviewQueuePage({ onNavigate }) {
         review_notes: 'Rejected pair. Confirmed as separate independent customers.',
       });
       setStatusMessage('Review case REJECTED (Confirmed NON_MATCH).');
-      fetchReviews();
+      setReviewCases((prev) => prev.filter((r) => r.id !== selectedReview.id));
+      setSelectedReview(null);
     } catch (err) {
       alert(err.message || 'Rejection failed');
     } finally {
@@ -130,7 +132,11 @@ export function ReviewQueuePage({ onNavigate }) {
     try {
       // Mock logic: move to verification queue
       setStatusMessage('Pair flagged for AI Verification. Sent to Verification Center.');
-      fetchReviews();
+      setReviewCases((prev) => prev.filter((r) => r.id !== selectedReview.id));
+      setSelectedReview(null);
+      setTimeout(() => {
+        onNavigate('verification');
+      }, 800);
     } catch (err) {
       alert('Verification request failed');
     } finally {
@@ -197,9 +203,9 @@ export function ReviewQueuePage({ onNavigate }) {
                 </div>
 
                 <div className="text-xs font-semibold text-slate-800 mt-2 truncate">
-                  {rev.details?.record_a?.name || rev.details?.record_a?.original_name || rev.record_a?.original_name || `Record #${rev.source_record_ids?.[0] || 'A'}`}
+                  {rev.details?.record_a?.name || rev.record_a?.full_name || `Record #${rev.source_record_ids?.[0] || 'A'}`}
                   {' ↔ '}
-                  {rev.details?.record_b?.name || rev.details?.record_b?.original_name || rev.record_b?.original_name || `Record #${rev.source_record_ids?.[1] || 'B'}`}
+                  {rev.details?.record_b?.name || rev.record_b?.full_name || `Record #${rev.source_record_ids?.[1] || 'B'}`}
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2">
@@ -228,23 +234,23 @@ export function ReviewQueuePage({ onNavigate }) {
                 <div className="space-y-2 text-xs">
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Full Name</span>
-                    <div className="font-bold text-slate-900 text-sm">{recA.original_name || 'Vikram Aditya Singhania'}</div>
+                    <div className="font-bold text-slate-900 text-sm">{recA.full_name || 'Vikram Aditya Singhania'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">PAN Number</span>
-                    <div className="font-mono font-bold text-slate-900">{recA.original_pan || 'AAACS1928L'}</div>
+                    <div className="font-mono font-bold text-slate-900">{recA.pan || 'AAACS1928L'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Mobile</span>
-                    <div className="font-mono text-slate-900">{recA.original_mobile || '9811234567'}</div>
+                    <div className="font-mono text-slate-900">{recA.mobile || '9811234567'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Email</span>
-                    <div className="text-slate-900 truncate">{recA.original_email || 'vikram.singhania@singhania.com'}</div>
+                    <div className="text-slate-900 truncate">{recA.email || 'vikram.singhania@singhania.com'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">City</span>
-                    <div className="text-slate-900">{recA.original_city || 'Bengaluru'}</div>
+                    <div className="text-slate-900">{recA.city || 'Bengaluru'}</div>
                   </div>
                 </div>
               </div>
@@ -261,23 +267,23 @@ export function ReviewQueuePage({ onNavigate }) {
                 <div className="space-y-2 text-xs">
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Full Name</span>
-                    <div className="font-bold text-slate-900 text-sm">{recB.original_name || 'Vikram A. Singhania'}</div>
+                    <div className="font-bold text-slate-900 text-sm">{recB.full_name || 'Vikram A. Singhania'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">PAN Number</span>
-                    <div className="font-mono font-bold text-slate-900">{recB.original_pan || 'AAACS1928K'}</div>
+                    <div className="font-mono font-bold text-slate-900">{recB.pan || 'AAACS1928K'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Mobile</span>
-                    <div className="font-mono text-slate-900">{recB.original_mobile || '9811234567'}</div>
+                    <div className="font-mono text-slate-900">{recB.mobile || '9811234567'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Email</span>
-                    <div className="text-slate-900 truncate">{recB.original_email || 'vikram.s@singhania.com'}</div>
+                    <div className="text-slate-900 truncate">{recB.email || 'vikram.s@singhania.com'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">City</span>
-                    <div className="text-slate-900">{recB.original_city || 'Bangalore'}</div>
+                    <div className="text-slate-900">{recB.city || 'Bangalore'}</div>
                   </div>
                 </div>
               </div>

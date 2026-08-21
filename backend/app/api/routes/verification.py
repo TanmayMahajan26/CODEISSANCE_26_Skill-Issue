@@ -1,75 +1,91 @@
-from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.api.deps import get_current_user
-from app.models.review_case import ReviewCase, VerificationClassification
-from app.schemas.review import ReviewCaseResponse
-from app.services.verification_service import trigger_ai_verification, handle_bolna_webhook
+from app.models.verification_case import VerificationCase, VerificationStatus
+from app.models.verification_result import VerificationResult
+from app.schemas.review import VerificationCaseResponse, VerificationResultResponse
 
-router = APIRouter(prefix="/verification", tags=["Verification"])
+router = APIRouter(tags=["Verification"])
 
-@router.get("/cases", response_model=List[ReviewCaseResponse])
-async def get_verification_cases(
+@router.get(
+    "/verification/cases",
+    response_model=List[dict],
+    summary="List verification cases",
+)
+async def list_verification_cases(
+    status: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
 ):
-    """
-    List all verification cases for the Admin Verification Center.
-    Requires Admin privileges.
-    """
-    if current_user.get("role") not in ["Admin", "Manager"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access Verification Center"
-        )
+    query = select(VerificationCase)
+    if status:
+        query = query.where(VerificationCase.status == status)
         
-    stmt = select(ReviewCase).where(
-        ReviewCase.verification_classification.is_not(None)
-    ).order_by(ReviewCase.created_at.desc())
+    result = await db.execute(query)
+    cases = result.scalars().all()
     
-    result = await db.execute(stmt)
-    return result.scalars().all()
-
-@router.post("/{review_id}/trigger-ai", response_model=ReviewCaseResponse)
-async def trigger_ai_call(
-    review_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Trigger an AI verification call for an eligible case.
-    """
-    if current_user.get("role") not in ["Admin", "Manager"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to trigger AI verification"
-        )
+    resp_cases = []
+    for c in cases:
+        c_dict = c.__dict__.copy()
         
-    try:
-        review = await trigger_ai_verification(
-            db, 
-            review_id=review_id, 
-            admin_username=current_user.get("username", "admin")
-        )
-        return review
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        # Attach result if any
+        res = await db.execute(select(VerificationResult).where(VerificationResult.verification_case_id == c.id))
+        result_obj = res.scalar_one_or_none()
+        if result_obj:
+            c_dict['result'] = result_obj.__dict__
+        else:
+            c_dict['result'] = None
+            
+        resp_cases.append(c_dict)
+        
+    return resp_cases
 
-@router.post("/bolna-webhook")
-async def bolna_webhook(
-    request: Request,
-    db: AsyncSession = Depends(get_db)
+@router.post(
+    "/verification/cases/{case_id}/ai-call/start",
+    summary="Start Kovi AI verification call",
+)
+async def start_kovi_call(
+    case_id: int,
+    db: AsyncSession = Depends(get_db),
 ):
-    """
-    Webhook endpoint to receive AI call results from Bolna.
-    """
-    try:
-        payload = await request.json()
-        await handle_bolna_webhook(db, payload)
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload")
+    result = await db.execute(select(VerificationCase).where(VerificationCase.id == case_id))
+    case = result.scalar_one_or_none()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+        
+    case.status = VerificationStatus.CALL_QUEUED
+    await db.commit()
+    return {"message": "Call Queued", "case_id": case.id}
+    
+@router.post(
+    "/verification/cases/{case_id}/ai-call/complete",
+    summary="Mock complete Kovi AI verification call (Demo)",
+)
+async def complete_kovi_call(
+    case_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(VerificationCase).where(VerificationCase.id == case_id))
+    case = result.scalar_one_or_none()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+        
+    case.status = VerificationStatus.CALL_COMPLETED
+    
+    # Check if result already exists
+    res = await db.execute(select(VerificationResult).where(VerificationResult.verification_case_id == case.id))
+    if not res.scalar_one_or_none():
+        new_res = VerificationResult(
+            verification_case_id=case.id,
+            language_detected="English",
+            call_summary="Customer confirmed their mobile number is correct as seeded.",
+            customer_response="Yes, that's my number.",
+            confidence=0.91,
+            outcome="VERIFIED_EXPLANATION"
+        )
+        db.add(new_res)
+        
+    await db.commit()
+    return {"message": "Call Completed", "case_id": case.id}

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: nexus360-backend
+    env: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      # You can override CORS to allow your Vercel frontend URL
+      # - key: CORS_ORIGINS
+      #   value: https://your-frontend-app.vercel.app

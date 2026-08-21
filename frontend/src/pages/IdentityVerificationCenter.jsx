@@ -40,11 +40,13 @@ export function IdentityVerificationCenter() {
   }, []);
 
   const handleTriggerAI = async (caseId) => {
+    const targetPhone = "+919920602745"; // Hardcoded as per user request
+
     setActionLoading(true);
     setStatusMessage('');
     try {
-      const updatedCase = await triggerAIVerification(caseId);
-      setStatusMessage('Kovi AI Verification Call initiated successfully.');
+      const updatedCase = await triggerAIVerification(caseId, targetPhone);
+      setStatusMessage('Kovi AI Verification Call initiated successfully to ' + targetPhone);
       
       // Update local state
       setCases((prev) => prev.map(c => c.id === caseId ? updatedCase : c));
@@ -60,9 +62,9 @@ export function IdentityVerificationCenter() {
 
   // Metrics
   const totalCases = cases.length;
-  const aiEligible = cases.filter(c => c.verification_classification === 'AI_VERIFICATION_ELIGIBLE').length;
-  const humanRequired = cases.filter(c => c.verification_classification === 'HUMAN_VERIFICATION_REQUIRED').length;
-  const aiCompleted = cases.filter(c => c.verification_status === 'AI_VERIFIED' || c.verification_status === 'AI_FAILED').length;
+  const aiEligible = cases.filter(c => c.ai_eligible).length;
+  const humanRequired = cases.filter(c => !c.ai_eligible).length;
+  const aiCompleted = cases.filter(c => c.status === 'CALL_COMPLETED' || c.status === 'AI_VERIFIED' || c.status === 'AI_FAILED' || c.status === 'VERIFIED').length;
 
   const getStatusBadge = (status) => {
     const s = status || 'PENDING';
@@ -71,9 +73,9 @@ export function IdentityVerificationCenter() {
     return 'bg-amber-100 text-amber-800 border-amber-200';
   };
 
-  const getClassificationBadge = (classification) => {
-    if (classification === 'AUTO_RESOLVE') return 'bg-emerald-100 text-emerald-800';
-    if (classification === 'HUMAN_VERIFICATION_REQUIRED') return 'bg-red-100 text-red-800';
+  const getClassificationBadge = (c) => {
+    if (c.ai_eligible) return 'bg-blue-100 text-blue-800';
+    if (!c.ai_eligible) return 'bg-red-100 text-red-800';
     return 'bg-blue-100 text-blue-800';
   };
 
@@ -140,17 +142,21 @@ export function IdentityVerificationCenter() {
                 >
                   <td className="px-4 py-3 font-mono font-medium text-slate-700">#{c.id}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getClassificationBadge(c.verification_classification)}`}>
-                      {c.verification_classification?.replace(/_/g, ' ')}
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getClassificationBadge(c)}`}>
+                      {c.ai_eligible ? 'AI ELIGIBLE' : 'HUMAN REQUIRED'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded border text-[10px] font-bold ${getStatusBadge(c.verification_status)}`}>
-                      {c.verification_status?.replace(/_/g, ' ') || 'PENDING'}
+                    <span className={`px-2 py-0.5 rounded border text-[10px] font-bold ${getStatusBadge(c.status)}`}>
+                      {c.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-600">
-                    {c.details?.score ? c.details.score.toFixed(2) : '-'}
+                  <td className="px-4 py-3 text-right">
+                    {c.result?.confidence ? (
+                      <span className="font-mono font-bold text-emerald-600">{(c.result.confidence * 100).toFixed(0)}%</span>
+                    ) : (
+                      <span className="text-slate-400 font-mono">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -172,39 +178,59 @@ export function IdentityVerificationCenter() {
             </div>
 
             <div className="space-y-4">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
-                <div className="text-xs font-bold text-slate-500 uppercase">Match Reasoning</div>
-                <div className="text-sm font-mono text-slate-700 bg-white p-2 rounded border border-slate-200 break-words">
-                  {selectedCase.details?.reasoning ? JSON.stringify(selectedCase.details.reasoning, null, 2) : 'No reasoning available'}
+              {/* Customer Contact Tab */}
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-blue-800 uppercase flex items-center gap-1 mb-1">
+                    <UserCheck className="w-4 h-4"/> Target Customer Profile
+                  </div>
+                  <div className="font-bold text-slate-900">{selectedCase.record_a?.original_name || 'Customer'}</div>
+                  <div className="font-mono text-sm text-slate-600 mt-0.5">Phone: +91 9920602745</div>
+                  {selectedCase.result ? (
+                      <div className="space-y-4 mt-4">
+                        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+                          <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2">Customer Confirmed</p>
+                          <p className="text-sm font-semibold text-emerald-900 leading-snug">
+                            "{selectedCase.result.customer_response}"
+                          </p>
+                        </div>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between pb-2 border-b border-slate-100">
+                            <span className="text-slate-500">Detected Language</span>
+                            <span className="font-semibold text-slate-800">{selectedCase.result.language_detected}</span>
+                          </div>
+                          <div className="flex justify-between pb-2 border-b border-slate-100">
+                            <span className="text-slate-500">Kovi Confidence</span>
+                            <span className="font-bold text-emerald-600 font-mono">{(selectedCase.result.confidence * 100).toFixed(1)}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-32 text-slate-400 space-y-2 mt-4">
+                        <Bot className="w-8 h-8 opacity-20" />
+                        <p className="text-xs">Awaiting Kovi AI contact outcome...</p>
+                      </div>
+                    )}
                 </div>
               </div>
 
-              {selectedCase.ai_call_result && (
-                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 space-y-2">
-                  <div className="text-xs font-bold text-purple-800 uppercase flex items-center gap-1">
-                    <Bot className="w-4 h-4"/> Kovi AI Call Result
-                  </div>
-                  <div className="text-sm text-slate-700 bg-white p-2 rounded border border-purple-200 break-words font-mono">
-                    {JSON.stringify(selectedCase.ai_call_result, null, 2)}
-                  </div>
-                  {selectedCase.ai_call_confidence && (
-                    <div className="text-xs font-bold text-slate-700 mt-2">
-                      Confidence: {selectedCase.ai_call_confidence}
-                    </div>
-                  )}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                <div className="text-xs font-bold text-slate-500 uppercase">Match Reasoning</div>
+                <div className="text-sm font-mono text-slate-700 bg-white p-2 rounded border border-slate-200 break-words">
+                  {selectedCase.discrepancy_type ? selectedCase.discrepancy_type : 'No reasoning available'}
                 </div>
-              )}
+              </div>
 
               {/* Action Buttons */}
               <div className="pt-4 flex justify-end gap-3">
-                {selectedCase.verification_classification === 'AI_VERIFICATION_ELIGIBLE' && (
+                {selectedCase.ai_eligible && (
                   <button
                     onClick={() => handleTriggerAI(selectedCase.id)}
-                    disabled={actionLoading || selectedCase.verification_status === 'AI_CALL_IN_PROGRESS'}
-                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl flex items-center gap-2 shadow-sm disabled:opacity-50"
+                    disabled={actionLoading || selectedCase.status === 'CALL_COMPLETED' || selectedCase.status === 'CALL_QUEUED'}
+                    className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl flex items-center gap-2 shadow-sm disabled:opacity-50 transition-all shadow-purple-900/20"
                   >
-                    <PhoneCall className="w-4 h-4" />
-                    Initiate Kovi AI Call
+                    <PhoneCall className="w-5 h-5" />
+                    Call +91 9920602745 (Kovi AI)
                   </button>
                 )}
 

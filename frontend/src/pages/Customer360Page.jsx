@@ -75,7 +75,7 @@ export function Customer360Page() {
     if (!cust) return;
     setLoadingHistory(true);
     try {
-      const custId = cust.golden_customer_id || cust.id;
+      const custId = cust.golden_id || cust.id;
       const history = await getCommunicationHistory(custId);
       setCommHistory(history || []);
     } catch (err) {
@@ -87,7 +87,7 @@ export function Customer360Page() {
 
   const handleSelectCustomer = async (cust) => {
     try {
-      const fullDetail = await getCustomerById(cust.golden_customer_id || cust.id);
+      const fullDetail = await getCustomerById(cust.golden_id || cust.id);
       const target = fullDetail || cust;
       setSelectedCustomer(target);
       setSelectedSourceDetail(null);
@@ -204,15 +204,15 @@ export function Customer360Page() {
             <div className="p-6 bg-gradient-to-r from-slate-900 via-navy-900 to-navy-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white font-bold text-xl flex items-center justify-center font-display shadow-md">
-                  {selectedCustomer.canonical_name ? selectedCustomer.canonical_name[0] : 'C'}
+                  {selectedCustomer.full_name ? selectedCustomer.full_name[0] : 'C'}
                 </div>
                 <div>
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <h3 className="text-xl font-bold font-display tracking-tight">
-                      {selectedCustomer.canonical_name}
+                      {selectedCustomer.full_name}
                     </h3>
                     <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 text-[10px] font-bold border border-emerald-800 font-mono">
-                      {selectedCustomer.golden_customer_id}
+                      {selectedCustomer.golden_id}
                     </span>
                     <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
                       ACTIVE
@@ -483,7 +483,7 @@ export function Customer360Page() {
             {activeTab === 'identity' && (
               <div className="space-y-6">
                 <div className="h-[400px] rounded-2xl overflow-hidden border border-slate-200 shadow-inner mt-4">
-                  <IdentityGraphPage initialCustomerSearch={selectedCustomer.canonical_name} />
+                  <IdentityGraphPage initialCustomerSearch={selectedCustomer.full_name} />
                 </div>
                 
                 <div className="p-6 space-y-4">
