@@ -19,17 +19,20 @@ def run_deterministic_matching(db: Session) -> int:
     # Load all records to build exact match indices
     records = db.query(SourceRecord).all()
     
+    # Build indices for composite rules
     pan_map = {}
-    mobile_map = {}
-    email_map = {}
+    email_dob_map = {}
+    mobile_dob_map = {}
     
     for r in records:
         if r.pan:
             pan_map.setdefault(r.pan, []).append(r)
-        if r.mobile:
-            mobile_map.setdefault(r.mobile, []).append(r)
-        if r.email:
-            email_map.setdefault(r.email, []).append(r)
+        if r.email and r.dob:
+            key = f"{r.email}_{r.dob}"
+            email_dob_map.setdefault(key, []).append(r)
+        if r.mobile and r.dob:
+            key = f"{r.mobile}_{r.dob}"
+            mobile_dob_map.setdefault(key, []).append(r)
             
     # Load existing edges to avoid duplicates (undirected pair matching)
     existing_edges = set()
@@ -44,9 +47,6 @@ def run_deterministic_matching(db: Session) -> int:
                 ra = group[i]
                 rb = group[j]
                 
-                # We only match records across different source systems, or we can match within the same system if they are distinct records.
-                # Standard MDM typically matches everything. We'll match everything.
-                
                 pair = tuple(sorted([ra.id, rb.id]))
                 if pair not in existing_edges:
                     edge = IdentityEdge(
@@ -55,8 +55,7 @@ def run_deterministic_matching(db: Session) -> int:
                         match_phase="deterministic",
                         confidence=1.0,
                         confidence_breakdown={
-                            "matched_on": match_field,
-                            "value": getattr(ra, match_field)
+                            "matched_on": match_field
                         }
                     )
                     db.add(edge)
@@ -68,13 +67,13 @@ def run_deterministic_matching(db: Session) -> int:
         if len(group) > 1:
             _create_edges_for_group(group, "pan")
             
-    for val, group in mobile_map.items():
+    for val, group in email_dob_map.items():
         if len(group) > 1:
-            _create_edges_for_group(group, "mobile")
+            _create_edges_for_group(group, "email_dob")
             
-    for val, group in email_map.items():
+    for val, group in mobile_dob_map.items():
         if len(group) > 1:
-            _create_edges_for_group(group, "email")
+            _create_edges_for_group(group, "mobile_dob")
             
     db.commit()
     logger.info(f"Deterministic matching complete. Created {new_edges} edges.")

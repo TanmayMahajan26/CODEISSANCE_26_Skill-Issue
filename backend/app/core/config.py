@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     """Application configuration loaded from environment variables."""
 
     # Database
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/identityforge"
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/Kovi"
 
     # JWT
     JWT_SECRET: str = "super-secret-change-in-production"
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = 384
 
     # Application
-    APP_NAME: str = "IdentityForge"
+    APP_NAME: str = "Kovi"
     DEBUG: bool = False
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}

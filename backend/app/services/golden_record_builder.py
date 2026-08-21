@@ -88,6 +88,9 @@ def build_golden_records(db: Session, clusters: List[Set[int]]) -> int:
         gr.source_systems = source_systems
         gr.source_record_count = len(records)
         
+        # Take the RM ownership from the most recent source record
+        gr.assigned_rm_id = records_sorted[0].assigned_rm_id if records_sorted else None
+        
         # Link source records to this Golden Record
         for r in records:
             r.golden_record_id = gr.id

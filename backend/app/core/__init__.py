@@ -1,1 +1,1 @@
-# IdentityForge — Core package
+# Kovi — Core package

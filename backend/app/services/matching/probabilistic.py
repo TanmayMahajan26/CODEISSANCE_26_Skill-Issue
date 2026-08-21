@@ -5,6 +5,7 @@ from rapidfuzz import fuzz
 
 from app.db.models.source_record import SourceRecord
 from app.db.models.identity_edge import IdentityEdge
+from app.db.models.review_queue import ReviewQueueItem
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ WEIGHTS = {
 }
 
 AUTO_MERGE_THRESHOLD = 0.85
-REVIEW_THRESHOLD = 0.60
+REVIEW_THRESHOLD = 0.30
 
 def run_probabilistic_matching(db: Session) -> int:
     """
@@ -30,6 +31,7 @@ def run_probabilistic_matching(db: Session) -> int:
     """
     logger.info("Starting Phase 2 - Step 2: Probabilistic Matching")
     new_edges = 0
+    review_items_created = 0
     
     records = db.query(SourceRecord).all()
     
@@ -108,7 +110,17 @@ def run_probabilistic_matching(db: Session) -> int:
                 db.add(edge)
                 existing_edges.add(pair)
                 new_edges += 1
+                
+                # Create review queue item for PENDING_REVIEW matches
+                if status == "PENDING_REVIEW":
+                    review_item = ReviewQueueItem(
+                        source_record_a_id=pair[0],
+                        source_record_b_id=pair[1],
+                        match_score=breakdown,
+                    )
+                    db.add(review_item)
+                    review_items_created += 1
 
     db.commit()
-    logger.info(f"Probabilistic matching complete. Created {new_edges} edges.")
+    logger.info(f"Probabilistic matching complete. Created {new_edges} edges, {review_items_created} review items.")
     return new_edges

@@ -41,6 +41,7 @@ class SourceRecord(Base):
 
     # Lineage
     golden_record_id = Column(Integer, ForeignKey("golden_records.id"), nullable=True, index=True)
+    assigned_rm_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     
     golden_record = relationship("GoldenRecord", back_populates="source_records")
 

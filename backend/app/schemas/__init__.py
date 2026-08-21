@@ -1,1 +1,1 @@
-# IdentityForge - Schemas package
+# Kovi - Schemas package

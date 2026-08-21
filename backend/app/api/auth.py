@@ -10,6 +10,7 @@ from app.core.security import verify_password, get_password_hash, create_access_
 from app.api import deps
 from app.schemas.auth import Token, UserResponse, UserCreate
 from app.db.models.user import User
+from app.db.models.audit import AuditLog
 
 router = APIRouter()
 settings = get_settings()
@@ -35,6 +36,18 @@ def login_access_token(
     
     access_token = create_access_token(subject=user.id)
     refresh_token = create_refresh_token(subject=user.id)
+    
+    # Audit log for login
+    audit = AuditLog(
+        actor_id=user.id,
+        actor_role=user.role.value if hasattr(user.role, 'value') else str(user.role),
+        action_type="USER_LOGIN",
+        entity_type="User",
+        entity_id=str(user.id),
+        description=f"Successful login for {user.email}",
+    )
+    db.add(audit)
+    db.commit()
     
     return {
         "access_token": access_token,

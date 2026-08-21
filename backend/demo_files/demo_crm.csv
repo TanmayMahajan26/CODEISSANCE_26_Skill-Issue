@@ -1,0 +1,5 @@
+source_system,source_id,name,dob,pan,email,mobile,city,segment,account_value,products
+CRM,CRM-Y1,John Doe,1980-05-15,ABCDE1234F,john.doe@email.com,9876543210,Mumbai,HNI,2500000,Mutual Fund
+WEALTH,WM-Y2,Ayesha Khan,1992-10-22,,ayesha.k@email.com,9988776655,Delhi,RETAIL,75000,PERSONAL_LOAN
+WEALTH,WM-Y3,R. Sharma,1975-01-01,RAKES9999G,rakesh.s@email.com,9112233445,Pune,SME,2000000,Equity
+CRM,CRM-Y4,Anjali Desai,1988-12-12,ANJAL8888H,anjali.d2@email.com,9898989898,Bangalore,RETAIL,300000,Mutual Fund
