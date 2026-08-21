@@ -27,6 +27,12 @@ class ReviewCaseResponse(BaseModel):
     created_at: datetime
     resolved_at: Optional[datetime] = None
 
+    verification_classification: Optional[str] = None
+    verification_status: Optional[str] = None
+    ai_call_id: Optional[str] = None
+    ai_call_result: Optional[Dict[str, Any]] = None
+    ai_call_confidence: Optional[str] = None
+
     model_config = {"from_attributes": True}
 
 
@@ -121,6 +127,12 @@ class ReviewCaseDetailResponse(BaseModel):
     source_record_ids: Optional[List[int]] = None
     created_at: datetime
     resolved_at: Optional[datetime] = None
+
+    verification_classification: Optional[str] = None
+    verification_status: Optional[str] = None
+    ai_call_id: Optional[str] = None
+    ai_call_result: Optional[Dict[str, Any]] = None
+    ai_call_confidence: Optional[str] = None
 
     # ── Source Records ────────────────────────────────────────────
     record_a: Optional[SourceRecordSummary] = None

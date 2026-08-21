@@ -23,6 +23,24 @@ class ReviewStatus(str, enum.Enum):
     REJECTED = "REJECTED"
 
 
+class VerificationClassification(str, enum.Enum):
+    AUTO_RESOLVE = "AUTO_RESOLVE"
+    AI_VERIFICATION_ELIGIBLE = "AI_VERIFICATION_ELIGIBLE"
+    HUMAN_VERIFICATION_REQUIRED = "HUMAN_VERIFICATION_REQUIRED"
+
+
+class VerificationStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    AI_CALL_REQUESTED = "AI_CALL_REQUESTED"
+    AI_CALL_IN_PROGRESS = "AI_CALL_IN_PROGRESS"
+    AI_VERIFIED = "AI_VERIFIED"
+    AI_FAILED = "AI_FAILED"
+    HUMAN_VERIFICATION_REQUIRED = "HUMAN_VERIFICATION_REQUIRED"
+    VERIFIED = "VERIFIED"
+    REJECTED = "REJECTED"
+    ESCALATED = "ESCALATED"
+
+
 class ReviewPriority(str, enum.Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
@@ -59,6 +77,13 @@ class ReviewCase(Base):
 
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     resolved_at = Column(DateTime)
+
+    # Verification Fields
+    verification_classification = Column(Enum(VerificationClassification), nullable=True)
+    verification_status = Column(Enum(VerificationStatus), nullable=True)
+    ai_call_id = Column(String(255), nullable=True)
+    ai_call_result = Column(JSONB, nullable=True)
+    ai_call_confidence = Column(String(50), nullable=True)
 
     # Relationships
     match_decision = relationship("MatchDecision", back_populates="review_case")

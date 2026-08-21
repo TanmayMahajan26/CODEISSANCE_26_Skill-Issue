@@ -73,10 +73,8 @@ def generate_pan() -> str:
 
 
 def generate_mobile() -> str:
-    """Generate a 10-digit Indian mobile number."""
-    prefix = random.choice(["9", "8", "7", "6"])
-    rest = "".join(random.choices(string.digits, k=9))
-    return f"{prefix}{rest}"
+    """Generate Indian mobile number registered with Twilio WhatsApp."""
+    return "9920602745"
 
 
 def format_mobile_variant(mobile: str) -> str:

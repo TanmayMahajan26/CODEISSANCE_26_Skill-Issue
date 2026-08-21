@@ -28,6 +28,10 @@ from app.api.routes import (
     config,
     audit,
     opportunities,
+    ai,
+    market,
+    communications,
+    verification,
 )
 from app.services.config_service import seed_default_config_rules
 from app.services.auth_service import seed_default_users
@@ -58,15 +62,28 @@ async def lifespan(app: FastAPI):
                 "SECRET_KEY in production."
             )
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    # Seed default BRE rules & default demo users
-    async with async_session_factory() as session:
-        await seed_default_config_rules(session)
-        if settings.ENVIRONMENT != "production":
-            await seed_default_users(session)
-        await session.commit()
+    # Non-blocking DB table & seed check (so HTTP server starts instantly)
+    async def init_db_async():
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+                try:
+                    from sqlalchemy import text
+                    await conn.execute(text("ALTER TYPE auditaction ADD VALUE IF NOT EXISTS 'COMMUNICATION_SENT';"))
+                except Exception:
+                    pass
+            
+            async with async_session_factory() as session:
+                await seed_default_config_rules(session)
+                if settings.ENVIRONMENT != "production":
+                    await seed_default_users(session)
+                await session.commit()
+            logger.info("Database tables and seed data ready")
+        except Exception as db_err:
+            logger.warning("Background DB init notice: %s", db_err)
+
+    import asyncio
+    asyncio.create_task(init_db_async())
 
     # Initialize local ML Embedding service (sentence-transformers)
     init_embedding_service()
@@ -115,6 +132,10 @@ app.include_router(reviews.router, prefix=API_V1)
 app.include_router(config.router, prefix=API_V1)
 app.include_router(audit.router, prefix=API_V1)
 app.include_router(opportunities.router, prefix=API_V1)
+app.include_router(market.router, prefix=API_V1)
+app.include_router(communications.router, prefix=API_V1)
+app.include_router(ai.router, prefix=API_V1)
+app.include_router(verification.router, prefix=API_V1)
 
 
 @app.get("/", tags=["Root"])

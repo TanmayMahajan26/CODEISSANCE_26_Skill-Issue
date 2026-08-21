@@ -25,6 +25,7 @@ class AuditAction(str, enum.Enum):
     DATA_INGEST = "DATA_INGEST"
     MATCHING_RUN = "MATCHING_RUN"
     REVIEW_CREATED = "REVIEW_CREATED"
+    COMMUNICATION_SENT = "COMMUNICATION_SENT"
 
 
 class AuditLog(Base):

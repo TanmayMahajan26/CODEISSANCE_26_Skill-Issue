@@ -26,6 +26,21 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
+    # ── Google Gemini AI ─────────────────────────────────────────
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.1-pro-preview"
+
+    # ── Market Data API ──────────────────────────────────────────
+    MARKET_DATA_API_KEY: str = "RQCNMG2WYVGOF0ZU"
+    TWELVE_DATA_API_KEY: str = "RQCNMG2WYVGOF0ZU"
+    FINNHUB_API_KEY: str = "da3o1c9r01qual4r150gda3o1c9r01qual4r1510"
+
+    # ── Twilio WhatsApp API Configuration ────────────────────────
+    TWILIO_ACCOUNT_SID: str = "ACae40269308e66296cfc65482b07b7d59"
+    TWILIO_AUTH_TOKEN: str = "b8904d496066ec757537a1a8a299bb54"
+    TWILIO_WHATSAPP_FROM: str = "whatsapp:+17372508034"
+    TWILIO_CONTENT_SID: str = "HXfe5ab5f00277942d4d4200328b4d403c"
+
     # ── CORS Settings ────────────────────────────────────────────
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
@@ -83,6 +98,7 @@ class Settings(BaseSettings):
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
+        "extra": "ignore",
     }
 
 

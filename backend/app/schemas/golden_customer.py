@@ -21,7 +21,7 @@ class GoldenCustomerResponse(BaseModel):
     canonical_city: Optional[str] = None
     canonical_segment: Optional[str] = None
     total_relationship_value: Optional[Decimal] = Decimal("0.0")
-    products_held: List[Dict[str, Any]] = []
+    products_held: List[Any] = []
     source_record_ids: List[int] = []
     attribute_provenance: Dict[str, Any] = {}
     match_confidence: float = 1.0

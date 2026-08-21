@@ -10,4 +10,7 @@ from app.api.routes import (  # noqa: F401
     audit,
     opportunities,
     auth,
+    ai,
+    market,
+    communications,
 )

@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.source_record import SourceRecord
 from app.models.match_decision import MatchDecision, Decision
 from app.models.identity_link import IdentityLink, MatchMethod, LinkStatus
-from app.models.review_case import ReviewCase, ReviewPriority, ReviewStatus, ReviewType
+from app.models.review_case import ReviewCase, ReviewPriority, ReviewStatus, ReviewType, VerificationClassification, VerificationStatus
 from app.models.golden_customer import GoldenCustomer, GoldenCustomerStatus
 
 from app.matching.blocking import (
@@ -228,11 +228,18 @@ async def run_matching_pipeline(
                 decision=decision_str,
                 reasoning=reasoning,
             )
+            # Determine Verification Classification
+            v_class = VerificationClassification.HUMAN_VERIFICATION_REQUIRED
+            if final_score >= 0.70 and "pan_conflict" not in str(reasoning) and features.name_similarity > 0.8:
+                v_class = VerificationClassification.AI_VERIFICATION_ELIGIBLE
+
             review = ReviewCase(
                 match_decision_id=match_decision.id,
                 priority=priority,
                 review_type=r_type,
                 status=ReviewStatus.PENDING,
+                verification_classification=v_class,
+                verification_status=VerificationStatus.PENDING,
                 source_record_ids=[rec_a.id, rec_b.id],
                 details={
                     "record_a": {"id": rec_a.id, "system": rec_a.source_system.value, "name": rec_a.original_name},
@@ -393,11 +400,18 @@ async def run_incremental_matching_for_record(
                 decision=decision_str,
                 reasoning=reasoning,
             )
+            # Determine Verification Classification
+            v_class = VerificationClassification.HUMAN_VERIFICATION_REQUIRED
+            if final_score >= 0.70 and "pan_conflict" not in str(reasoning) and features.name_similarity > 0.8:
+                v_class = VerificationClassification.AI_VERIFICATION_ELIGIBLE
+
             review = ReviewCase(
                 match_decision_id=match_decision.id,
                 priority=priority,
                 review_type=r_type,
                 status=ReviewStatus.PENDING,
+                verification_classification=v_class,
+                verification_status=VerificationStatus.PENDING,
                 source_record_ids=[rec_a.id, rec_b.id],
                 details={
                     "record_a": {"id": rec_a.id, "system": rec_a.source_system.value, "name": rec_a.original_name},

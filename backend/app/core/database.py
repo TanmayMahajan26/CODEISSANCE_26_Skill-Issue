@@ -11,9 +11,23 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
 
+# ── SQLite Compatibility Compilers for PostgreSQL Dialects ────────────────
+from sqlalchemy.ext.compiler import compiles
+try:
+    from sqlalchemy.dialects.postgresql import JSONB, ARRAY
+    @compiles(JSONB, "sqlite")
+    def compile_jsonb_sqlite(type_, compiler, **kw):
+        return "JSON"
+
+    @compiles(ARRAY, "sqlite")
+    def compile_array_sqlite(type_, compiler, **kw):
+        return "TEXT"
+except ImportError:
+    pass
+
 # Pass ssl context in connect_args if connecting to a remote PostgreSQL database (such as Supabase)
 connect_args = {}
-if "localhost" not in settings.DATABASE_URL and "127.0.0.1" not in settings.DATABASE_URL:
+if "sqlite" not in settings.DATABASE_URL and "localhost" not in settings.DATABASE_URL and "127.0.0.1" not in settings.DATABASE_URL:
     ctx = ssl.create_default_context()
     if not settings.DB_SSL_VERIFY:
         ctx.check_hostname = False
@@ -23,14 +37,16 @@ if "localhost" not in settings.DATABASE_URL and "127.0.0.1" not in settings.DATA
         ctx.verify_mode = ssl.CERT_REQUIRED
     connect_args["ssl"] = ctx
 
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,
-    connect_args=connect_args,
-)
+engine_args = {
+    "echo": settings.DEBUG,
+    "pool_pre_ping": True,
+}
+if "sqlite" not in settings.DATABASE_URL:
+    engine_args["pool_size"] = 10
+    engine_args["max_overflow"] = 20
+    engine_args["connect_args"] = connect_args
+
+engine = create_async_engine(settings.DATABASE_URL, **engine_args)
 
 async_session_factory = async_sessionmaker(
     engine,

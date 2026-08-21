@@ -10,3 +10,4 @@ from app.models.config_rule import ConfigRule, RuleCategory  # noqa: F401
 from app.models.audit_log import AuditLog, AuditAction  # noqa: F401
 from app.models.opportunity import Opportunity, OpportunityType, OpportunityStatus  # noqa: F401
 from app.models.user import User, UserRole  # noqa: F401
+from app.models.communication_log import CommunicationLog  # noqa: F401
