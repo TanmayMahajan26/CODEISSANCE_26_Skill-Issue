@@ -13,12 +13,13 @@ import {
   ShieldCheck,
   TrendingUp,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Network
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export function Sidebar({ currentTab, onSelectTab }) {
-  const { user } = useAuth();
+  const { user, switchDemoRole } = useAuth();
   const role = user?.role || 'ADMIN';
   const [adminOpen, setAdminOpen] = useState(false);
 
@@ -28,7 +29,8 @@ export function Sidebar({ currentTab, onSelectTab }) {
       title: 'MAIN',
       items: [
         { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'REVIEWER', 'RELATIONSHIP_MANAGER', 'ANALYST'] },
-        { id: 'customers', label: 'Customers', icon: Users, roles: ['ADMIN', 'REVIEWER', 'RELATIONSHIP_MANAGER', 'ANALYST'] }
+        { id: 'customers', label: 'Customer 360', icon: Users, roles: ['ADMIN', 'REVIEWER', 'RELATIONSHIP_MANAGER', 'ANALYST'] },
+        { id: 'graph', label: 'Identity Graph', icon: Network, roles: ['ADMIN', 'REVIEWER', 'ANALYST'] }
       ]
     },
     {
@@ -145,6 +147,33 @@ export function Sidebar({ currentTab, onSelectTab }) {
               )}
             </div>
           )}
+        </div>
+      </div>
+      {/* ── Bottom Role Switcher ─────────────────────────────────────── */}
+      <div className="mt-auto p-4 border-t border-slate-800/80 bg-navy-950 relative">
+        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+          Demo Role Simulation
+        </div>
+        <select
+          value={role}
+          onChange={(e) => {
+            if (switchDemoRole) {
+              switchDemoRole(e.target.value).then((res) => {
+                if (res.success) {
+                  onSelectTab('overview');
+                }
+              });
+            }
+          }}
+          className="w-full bg-navy-900 border border-slate-700 text-xs font-semibold text-white rounded-lg px-3 py-2 outline-none focus:border-emerald-500 appearance-none cursor-pointer relative z-10"
+        >
+          <option value="ADMIN">ADMIN</option>
+          <option value="REVIEWER">REVIEWER</option>
+          <option value="ANALYST">ANALYST</option>
+          <option value="RELATIONSHIP_MANAGER">RM</option>
+        </select>
+        <div className="pointer-events-none absolute right-7 bottom-6 text-slate-400 z-20">
+          <ChevronDown className="w-4 h-4" />
         </div>
       </div>
     </aside>

@@ -8,24 +8,11 @@ import {
   Zap,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { ChevronDown, LogOut, DatabaseBackup } from 'lucide-react';
-import { api } from '../../api/client';
+import { ChevronDown, LogOut } from 'lucide-react';
 
 export function Topbar({ title, subtitle, onSearchClick }) {
   const { user, backendStatus, switchDemoRole, logout } = useAuth();
   const [showRoleMenu, setShowRoleMenu] = React.useState(false);
-  
-  const handleResetDemo = async () => {
-    if (window.confirm("This will restore all demo records, review decisions and verification statuses to their original state.")) {
-      try {
-        await api.post('/config/reset-demo', {});
-        alert("Demo data reset successfully. Please refresh the page.");
-        window.location.reload();
-      } catch (err) {
-        alert("Failed to reset demo data: " + err.message);
-      }
-    }
-  };
 
   return (
     <header className="h-20 bg-white border-b border-slate-200 px-6 sm:px-8 flex items-center justify-between shrink-0 select-none">
@@ -60,16 +47,6 @@ export function Topbar({ title, subtitle, onSearchClick }) {
             {backendStatus.online ? 'FastAPI 8000' : 'Demo DB'}
           </span>
         </div>
-        
-        {user?.role === 'ADMIN' && (
-          <button 
-            onClick={handleResetDemo}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
-          >
-            <DatabaseBackup className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Reset Demo Data</span>
-          </button>
-        )}
 
         {/* User Identity Chip with Role Dropdown */}
         <div className="relative">

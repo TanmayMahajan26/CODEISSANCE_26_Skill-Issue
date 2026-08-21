@@ -31,6 +31,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { getIdentityGraphAll } from '../api';
 import { formatINR, formatPercent, maskPAN, maskMobile } from '../utils/formatters';
+import { MOCK_IDENTITY_GRAPH } from '../utils/mockData';
 
 export function IdentityGraphPage({ onNavigate, initialCustomerSearch = '' }) {
   const { user } = useAuth();
@@ -58,8 +59,11 @@ export function IdentityGraphPage({ onNavigate, initialCustomerSearch = '' }) {
     DEFAULT: { bg: '#475569', label: 'Source Record' },
   };
 
+  const [error, setError] = useState(null);
+
   const fetchGraph = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await getIdentityGraphAll({
         search: searchQuery,
@@ -67,17 +71,22 @@ export function IdentityGraphPage({ onNavigate, initialCustomerSearch = '' }) {
         status_filter: selectedStatus,
       });
 
-      if (data && data.nodes) {
-        // Map edges to links for react-force-graph
+      if (data && data.nodes && data.nodes.length > 0) {
         const links = (data.edges || []).map(e => ({
           ...e,
           source: typeof e.source === 'object' ? e.source.id : e.source,
           target: typeof e.target === 'object' ? e.target.id : e.target,
         }));
         setGraphData({ nodes: data.nodes, links });
+      } else if (data && data.nodes && data.nodes.length === 0) {
+         setGraphData({ nodes: [], links: [] });
+      } else {
+         throw new Error("Invalid graph data format returned from API.");
       }
     } catch (err) {
-      console.error('Failed to load identity graph:', err);
+      console.error('Failed to load identity graph from backend.', err);
+      setError('Failed to load identity graph. ' + (err.message || ''));
+      setGraphData({ nodes: [], links: [] });
     } finally {
       setLoading(false);
     }
@@ -229,7 +238,22 @@ export function IdentityGraphPage({ onNavigate, initialCustomerSearch = '' }) {
         </div>
 
         {/* Force Graph */}
-        <div className="w-full h-full">
+        <div className="w-full h-full relative">
+          {error ? (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-100/90">
+              <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 flex items-center gap-3 max-w-lg shadow-sm">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                <p className="font-medium text-sm">{error}</p>
+                <button onClick={fetchGraph} className="ml-2 underline text-xs hover:text-red-800 shrink-0">Retry</button>
+              </div>
+            </div>
+          ) : graphData.nodes.length === 0 && !loading ? (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-100/90">
+              <div className="bg-white text-slate-500 p-4 rounded-xl border border-slate-200 text-sm shadow-sm">
+                No identity graph data available for the current filters.
+              </div>
+            </div>
+          ) : null}
           <ForceGraph2D
             ref={fgRef}
             graphData={graphData}

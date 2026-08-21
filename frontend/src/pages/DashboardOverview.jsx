@@ -15,20 +15,25 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { getMatchingStats, resetDemoData } from '../api';
 import { formatNumber, formatPercent } from '../utils/formatters';
+import { MOCK_OVERVIEW_STATS, MOCK_REVIEW_CASES, MOCK_VERIFICATION_CASES } from '../utils/mockData';
 
 export function DashboardOverview({ onNavigate }) {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState(false);
+  const [error, setError] = useState(null);
 
   const fetchStats = async () => {
     setLoading(true);
+    setError(null);
     try {
       const sData = await getMatchingStats();
+      if (!sData) throw new Error("No data received from API");
       setStats(sData);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch dashboard stats", err);
+      setError(err.message || "Failed to load dashboard statistics.");
     } finally {
       setLoading(false);
     }
@@ -37,6 +42,7 @@ export function DashboardOverview({ onNavigate }) {
   useEffect(() => {
     fetchStats();
   }, []);
+
   const handleResetDemo = async () => {
     if (window.confirm("This will restore all demo records, review decisions and verification statuses to their original state.")) {
       setResetting(true);
@@ -53,13 +59,25 @@ export function DashboardOverview({ onNavigate }) {
     }
   };
 
-  const totalSourceRecords = stats?.total_source_records ?? 12450;
-  const goldenCustomers = stats?.total_golden_records ?? stats?.golden_customers ?? 4890;
-  const duplicateReductionPct = stats?.duplicate_reduction_pct ?? 57.8;
-  const pendingReviews = stats?.total_reviews_pending ?? stats?.reviews ?? 18;
-  const verificationRequired = 6;
-  const aiEligible = 4;
-  const humanRequired = 2;
+  const totalSourceRecords = stats?.total_source_records ?? 0;
+  const goldenCustomers = stats?.total_golden_records ?? 0;
+  const duplicateReductionPct = stats?.match_rate_pct ?? 0;
+  const pendingReviews = stats?.total_reviews_pending ?? 0;
+  const aiEligible = stats?.ai_eligible ?? 0;
+  const humanRequired = stats?.human_required ?? 0;
+  const verificationRequired = aiEligible + humanRequired;
+
+  if (error) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <p className="font-medium">{error}</p>
+          <button onClick={fetchStats} className="ml-auto underline text-sm hover:text-red-800">Retry</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 sm:p-8 space-y-8 max-w-7xl mx-auto">

@@ -1,25 +1,55 @@
+"""
+Pydantic schemas for Source Records.
+"""
+
 from datetime import date, datetime
-from typing import Optional, Dict, Any
-from pydantic import BaseModel
 from decimal import Decimal
-from app.models.source_record import SourceSystem
+from typing import Any, Dict, Optional, List
+
+from pydantic import BaseModel, Field
+
 
 class SourceRecordBase(BaseModel):
-    source_system: SourceSystem
+    """Fields shared by creation and response schemas."""
+    source_system: str
     source_record_id: str
-    customer_reference: Optional[str] = None
-    full_name: Optional[str] = None
-    pan: Optional[str] = None
-    mobile: Optional[str] = None
-    email: Optional[str] = None
-    dob: Optional[date] = None
-    city: Optional[str] = None
+    original_name: Optional[str] = None
+    original_dob: Optional[date] = None
+    original_mobile: Optional[str] = None
+    original_email: Optional[str] = None
+    original_pan: Optional[str] = None
+    original_city: Optional[str] = None
+    segment: Optional[str] = None
     product_type: Optional[str] = None
-    holding_value: Optional[Decimal] = None
+    balance_aum: Optional[Decimal] = None
+    relationship_value: Optional[Decimal] = None
+    last_activity_date: Optional[date] = None
+    rm_id: Optional[str] = None
+
+
+class SourceRecordCreate(SourceRecordBase):
+    """Used when creating a source record via ingestion."""
+    raw_data: Optional[Dict[str, Any]] = None
+
 
 class SourceRecordResponse(SourceRecordBase):
+    """Returned from the API."""
     id: int
-    created_at: datetime
+    normalized_name: Optional[str] = None
+    normalized_dob: Optional[date] = None
+    normalized_mobile: Optional[str] = None
+    normalized_email: Optional[str] = None
+    normalized_pan: Optional[str] = None
+    normalized_city: Optional[str] = None
+    raw_data: Optional[Dict[str, Any]] = None
+    ingested_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
+
+
+class IngestionResponse(BaseModel):
+    """Response returned after a CSV ingestion."""
+    message: str
+    records_ingested: int
+    source_system: str
+    errors: List[str] = Field(default_factory=list)

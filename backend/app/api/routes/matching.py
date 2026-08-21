@@ -19,7 +19,7 @@ from app.core.database import get_db
 from app.models.audit_log import AuditAction
 from app.models.golden_customer import GoldenCustomer
 from app.models.match_decision import Decision, MatchDecision
-from app.models.review_case import ReviewCase, ReviewStatus
+from app.models.review_case import ReviewCase, ReviewStatus, VerificationClassification
 from app.models.source_record import SourceRecord, SourceSystem
 from app.models.user import User, UserRole
 from app.schemas.matching import MatchDecisionResponse, MatchRunResponse, MatchingStatsResponse
@@ -156,6 +156,16 @@ async def get_matching_stats(
             "pan_completeness_pct": pan_completeness,
         }
 
+    res_ai_eligible = await db.execute(
+        select(func.count(ReviewCase.id)).where(ReviewCase.verification_classification == VerificationClassification.AI_VERIFICATION_ELIGIBLE)
+    )
+    total_ai_eligible = res_ai_eligible.scalar() or 0
+
+    res_human_req = await db.execute(
+        select(func.count(ReviewCase.id)).where(ReviewCase.verification_classification == VerificationClassification.HUMAN_VERIFICATION_REQUIRED)
+    )
+    total_human_req = res_human_req.scalar() or 0
+
     return MatchingStatsResponse(
         total_source_records=total_src,
         total_golden_records=total_gold,
@@ -164,6 +174,8 @@ async def get_matching_stats(
         total_matches=total_matches,
         total_reviews_pending=total_rev,
         total_non_matches=total_non,
+        ai_eligible=total_ai_eligible,
+        human_required=total_human_req,
         by_source_system=by_sys,
     )
 

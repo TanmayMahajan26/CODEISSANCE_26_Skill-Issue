@@ -41,6 +41,32 @@ export default function App() {
     }
   }, [user, currentTab]);
 
+  // Enforce role-based access to tabs
+  useEffect(() => {
+    if (user && currentTab !== 'landing' && currentTab !== 'login') {
+      const role = user.role || 'ADMIN';
+      const allowedRoles = {
+        overview: ['ADMIN', 'REVIEWER', 'RELATIONSHIP_MANAGER', 'ANALYST'],
+        customers: ['ADMIN', 'REVIEWER', 'RELATIONSHIP_MANAGER', 'ANALYST'],
+        graph: ['ADMIN', 'REVIEWER', 'ANALYST'],
+        matching: ['ADMIN'],
+        reviews: ['ADMIN', 'REVIEWER'],
+        verification: ['ADMIN', 'REVIEWER'],
+        market: ['ADMIN', 'RELATIONSHIP_MANAGER'],
+        opportunities: ['ADMIN', 'RELATIONSHIP_MANAGER'],
+        ingestion: ['ADMIN'],
+        config: ['ADMIN'],
+        audit: ['ADMIN'],
+        simulator: ['ADMIN', 'ANALYST']
+      };
+      
+      const rolesForTab = allowedRoles[currentTab];
+      if (rolesForTab && !rolesForTab.includes(role)) {
+        setCurrentTab('overview');
+      }
+    }
+  }, [user, currentTab]);
+
   // ── Render Landing Page ──────────────────────────────────────────
   if (currentTab === 'landing') {
     return <LandingPage onNavigate={setCurrentTab} />;

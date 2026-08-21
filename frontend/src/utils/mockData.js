@@ -248,6 +248,73 @@ export const MOCK_REVIEW_CASES = [
   },
 ];
 
+export const MOCK_IDENTITY_GRAPH = {
+  nodes: [
+    { id: 'GOLD-000101', type: 'GOLDEN', label: 'Rohit P. Raghavan', source_system: 'GOLDEN', total_relationship_value: 12850000 },
+    { id: 'WLT-8849', type: 'SOURCE', label: 'Rohit P. Raghavan', source_system: 'WEALTH', balance_aum: 8500000 },
+    { id: 'EQ-49201', type: 'SOURCE', label: 'Rohit Raghavan', source_system: 'EQUITY', balance_aum: 3200000 },
+    { id: 'MF-77312', type: 'SOURCE', label: 'R. P. Raghavan', source_system: 'MUTUAL_FUND', balance_aum: 950000 },
+    { id: 'INS-1094', type: 'SOURCE', label: 'Rohit Raghavan', source_system: 'INSURANCE', balance_aum: 200000 },
+    
+    { id: 'GOLD-000102', type: 'GOLDEN', label: 'Sunita Mehra', source_system: 'GOLDEN', total_relationship_value: 45000000 },
+    { id: 'WLT-9911', type: 'SOURCE', label: 'Sunita Mehra', source_system: 'WEALTH', balance_aum: 20000000 },
+    { id: 'MF-2200', type: 'SOURCE', label: 'Sunita K. Mehra', source_system: 'MUTUAL_FUND', balance_aum: 25000000 },
+
+    { id: 'GOLD-000103', type: 'GOLDEN', label: 'Vikram Aditya Singhania', source_system: 'GOLDEN', total_relationship_value: 89000000 },
+    { id: 'EQ-8819', type: 'SOURCE', label: 'Vikram Aditya Singhania', source_system: 'EQUITY', balance_aum: 45000000 },
+    { id: 'MF-4402', type: 'SOURCE', label: 'Vikram A. Singhania', source_system: 'MUTUAL_FUND', balance_aum: 18000000 },
+    { id: 'LN-9921', type: 'SOURCE', label: 'V. Singhania', source_system: 'LOAN', balance_aum: 26000000 }
+  ],
+  edges: [
+    { source: 'GOLD-000101', target: 'WLT-8849', status: 'MATCH', confidence: 0.98 },
+    { source: 'GOLD-000101', target: 'EQ-49201', status: 'MATCH', confidence: 0.95 },
+    { source: 'GOLD-000101', target: 'MF-77312', status: 'MATCH', confidence: 0.89 },
+    { source: 'GOLD-000101', target: 'INS-1094', status: 'MATCH', confidence: 0.94 },
+    
+    { source: 'GOLD-000102', target: 'WLT-9911', status: 'MATCH', confidence: 0.99 },
+    { source: 'GOLD-000102', target: 'MF-2200', status: 'REVIEW', confidence: 0.82 },
+
+    { source: 'GOLD-000103', target: 'EQ-8819', status: 'MATCH', confidence: 0.98 },
+    { source: 'GOLD-000103', target: 'MF-4402', status: 'CONFLICT', confidence: 0.76 },
+    { source: 'GOLD-000103', target: 'LN-9921', status: 'MATCH', confidence: 0.88 }
+  ]
+};
+
+export const MOCK_VERIFICATION_CASES = [
+  {
+    id: 401,
+    review_case_id: 1,
+    verification_classification: 'AI_VERIFICATION_ELIGIBLE',
+    verification_status: 'PENDING',
+    priority: 'HIGH',
+    details: {
+      score: 0.92,
+      reasoning: 'Minor mobile number discrepancy (1 digit diff). Eligible for AI Voice verification.',
+    },
+    record_a: {
+      original_name: 'Vikram Aditya Singhania',
+      original_mobile: '9811234567',
+    },
+    created_at: '2026-08-20T08:45:00Z',
+  },
+  {
+    id: 402,
+    review_case_id: 2,
+    verification_classification: 'HUMAN_VERIFICATION_REQUIRED',
+    verification_status: 'PENDING',
+    priority: 'CRITICAL',
+    details: {
+      score: 0.79,
+      reasoning: 'PAN conflict. Strong identity contradiction requiring manual KYC review.',
+    },
+    record_a: {
+      original_name: 'Rohit P. Raghavan',
+      original_mobile: '9876543210',
+    },
+    created_at: '2026-08-20T09:20:00Z',
+  },
+];
+
 export const MOCK_OPPORTUNITIES = [
   {
     id: 1,

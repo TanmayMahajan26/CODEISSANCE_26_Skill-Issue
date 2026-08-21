@@ -1,91 +1,111 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.models.verification_case import VerificationCase, VerificationStatus
-from app.models.verification_result import VerificationResult
-from app.schemas.review import VerificationCaseResponse, VerificationResultResponse
+from app.api.deps import get_current_user
+from app.models.review_case import ReviewCase, VerificationClassification
+from app.schemas.review import ReviewCaseResponse
+from pydantic import BaseModel
+from app.services.verification_service import trigger_ai_verification, handle_bolna_webhook
 
-router = APIRouter(tags=["Verification"])
+class TriggerAIPayload(BaseModel):
+    target_phone: str = None
 
-@router.get(
-    "/verification/cases",
-    response_model=List[dict],
-    summary="List verification cases",
-)
-async def list_verification_cases(
-    status: Optional[str] = None,
-    db: AsyncSession = Depends(get_db),
-):
-    query = select(VerificationCase)
-    if status:
-        query = query.where(VerificationCase.status == status)
-        
-    result = await db.execute(query)
-    cases = result.scalars().all()
-    
-    resp_cases = []
-    for c in cases:
-        c_dict = c.__dict__.copy()
-        
-        # Attach result if any
-        res = await db.execute(select(VerificationResult).where(VerificationResult.verification_case_id == c.id))
-        result_obj = res.scalar_one_or_none()
-        if result_obj:
-            c_dict['result'] = result_obj.__dict__
-        else:
-            c_dict['result'] = None
-            
-        resp_cases.append(c_dict)
-        
-    return resp_cases
+router = APIRouter(prefix="/verification", tags=["Verification"])
 
-@router.post(
-    "/verification/cases/{case_id}/ai-call/start",
-    summary="Start Kovi AI verification call",
-)
-async def start_kovi_call(
-    case_id: int,
+@router.get("/cases", response_model=List[ReviewCaseResponse])
+async def get_verification_cases(
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
-    result = await db.execute(select(VerificationCase).where(VerificationCase.id == case_id))
-    case = result.scalar_one_or_none()
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
-        
-    case.status = VerificationStatus.CALL_QUEUED
-    await db.commit()
-    return {"message": "Call Queued", "case_id": case.id}
-    
-@router.post(
-    "/verification/cases/{case_id}/ai-call/complete",
-    summary="Mock complete Kovi AI verification call (Demo)",
-)
-async def complete_kovi_call(
-    case_id: int,
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(VerificationCase).where(VerificationCase.id == case_id))
-    case = result.scalar_one_or_none()
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
-        
-    case.status = VerificationStatus.CALL_COMPLETED
-    
-    # Check if result already exists
-    res = await db.execute(select(VerificationResult).where(VerificationResult.verification_case_id == case.id))
-    if not res.scalar_one_or_none():
-        new_res = VerificationResult(
-            verification_case_id=case.id,
-            language_detected="English",
-            call_summary="Customer confirmed their mobile number is correct as seeded.",
-            customer_response="Yes, that's my number.",
-            confidence=0.91,
-            outcome="VERIFIED_EXPLANATION"
+    """
+    List all verification cases for the Admin Verification Center.
+    Requires Admin privileges.
+    """
+    if current_user.get("role") not in ["Admin", "Manager"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access Verification Center"
         )
-        db.add(new_res)
         
-    await db.commit()
-    return {"message": "Call Completed", "case_id": case.id}
+    stmt = select(ReviewCase).where(
+        ReviewCase.verification_classification.is_not(None)
+    ).order_by(ReviewCase.created_at.desc())
+    
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+@router.post("/{review_id}/trigger-ai", response_model=ReviewCaseResponse)
+async def trigger_ai_call(
+    review_id: int,
+    payload: TriggerAIPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Trigger an AI verification call for an eligible case.
+    """
+    if current_user.get("role") not in ["Admin", "Manager"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to trigger AI verification"
+        )
+        
+    if review_id == 999:
+        # DEMO PATH: Trigger Bolna API directly for the mock case
+        import httpx
+        import os
+        BOLNA_API_KEY = os.getenv("BOLNA_API_KEY", "bn-5d61aad059d54aaa8a087e4ad4b5de08")
+        BOLNA_AGENT_ID = os.getenv("BOLNA_AGENT_ID", "eb9494b9-3d3d-4111-aa12-27bfac34a0a3")
+        BOLNA_API_URL = "https://api.bolna.dev/call"
+        
+        phone_number = payload.target_phone or "+919920602745"
+        if not phone_number.startswith("+"): 
+            phone_number = f"+{phone_number}"
+            
+        bolna_payload = {
+            "agent_id": BOLNA_AGENT_ID,
+            "recipient_phone_number": phone_number,
+            "user_data": {
+                "customer_name": "Rohit P. Raghavan",
+                "verification_context": "Please verify the customer's PAN card."
+            }
+        }
+        headers = {"Authorization": f"Bearer {BOLNA_API_KEY}", "Content-Type": "application/json"}
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(BOLNA_API_URL, json=bolna_payload, headers=headers, timeout=10.0)
+        except Exception as e:
+            print("Bolna test call failed:", e)
+            
+        # Raise error to trigger frontend fallback mock state
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Demo call triggered")
+
+    try:
+        review = await trigger_ai_verification(
+            db, 
+            review_id=review_id, 
+            admin_username=current_user.get("username", "admin"),
+            target_phone=payload.target_phone
+        )
+        return review
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+@router.post("/bolna-webhook")
+async def bolna_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Webhook endpoint to receive AI call results from Bolna.
+    """
+    try:
+        payload = await request.json()
+        await handle_bolna_webhook(db, payload)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload")

@@ -26,30 +26,13 @@ export function MatchExplanationModal({ decision, reviewCase, onClose, onApprove
   if (!decision && !reviewCase) return null;
 
   // Resolve Record A and Record B
-  const recA = decision?.record_a || reviewCase?.record_a || reviewCase?.details?.record_a || {
-    original_name: 'Rohita P. Raghavan',
-    original_pan: 'ABCDE1234F',
-    original_mobile: '9920602745',
-    original_email: 'rohit.raghavan@gmail.com',
-    original_dob: '1988-06-12',
-    original_city: 'Mumbai',
-    source_system: 'EQUITY',
-  };
-
-  const recB = decision?.record_b || reviewCase?.record_b || reviewCase?.details?.record_b || {
-    original_name: 'Rohita Raghavan',
-    original_pan: 'ABCDE1234F',
-    original_mobile: '', // Missing in Mutual Fund
-    original_email: 'rohit.raghavan@yahoo.com',
-    original_dob: '1988-06-12',
-    original_city: 'Bombay',
-    source_system: 'MUTUAL_FUND',
-  };
+  const recA = reviewCase?.record_a || decision?.record_a || reviewCase?.details?.record_a || {};
+  const recB = reviewCase?.record_b || decision?.record_b || reviewCase?.details?.record_b || {};
 
   // Scores
-  const ruleScore = decision?.rule_score ?? (decision?.pan_match === 1.0 ? 0.92 : 0.74);
-  const aiScore = decision?.name_semantic_similarity ?? decision?.ai_score ?? 0.94;
-  const finalScore = decision?.final_score ?? reviewCase?.final_score ?? 0.93;
+  const ruleScore = decision?.final_score ?? 0.0;
+  const aiScore = decision?.name_semantic_similarity ?? 0.0;
+  const finalScore = decision?.final_score ?? reviewCase?.final_score ?? 0.0;
   const decisionType = decision?.decision || (finalScore >= 0.85 ? 'MATCH' : finalScore >= 0.6 ? 'REVIEW' : 'NON_MATCH');
 
   // Conflict Detection
@@ -57,54 +40,68 @@ export function MatchExplanationModal({ decision, reviewCase, onClose, onApprove
   const isHighRiskConflict = hasPanConflict || (decisionType === 'REVIEW' && hasPanConflict);
 
   // Field Level Evaluation Grid
+  const getFieldStatus = (key) => {
+    const comp = reviewCase?.field_comparisons?.find(f => f.field_name === key);
+    if (!comp) return 'MISSING';
+    if (comp.status === 'MATCH') return 'EXACT';
+    if (comp.status === 'DIFFERENT') return 'CONFLICT';
+    if (comp.status === 'PARTIAL') return 'SIMILAR';
+    return 'MISSING';
+  };
+
+  const getFieldScore = (key) => {
+    const comp = reviewCase?.field_comparisons?.find(f => f.field_name === key);
+    return comp ? `${(comp.score * 100).toFixed(0)}%` : 'N/A';
+  };
+
   const fields = [
     {
       key: 'name',
       label: 'Full Name',
       valA: recA.original_name || '—',
       valB: recB.original_name || '—',
-      similarity: decision?.name_similarity ? `${(decision.name_similarity * 100).toFixed(0)}%` : '96%',
-      status: recA.original_name === recB.original_name ? 'EXACT' : 'SIMILAR',
+      similarity: getFieldScore('name_string'),
+      status: getFieldStatus('name_string'),
     },
     {
       key: 'pan',
       label: 'PAN Number',
       valA: recA.original_pan || 'Not available',
       valB: recB.original_pan || 'Not available',
-      similarity: hasPanConflict ? '0%' : '100%',
-      status: hasPanConflict ? 'CONFLICT' : recA.original_pan && recB.original_pan ? 'EXACT' : 'MISSING',
+      similarity: getFieldScore('pan'),
+      status: getFieldStatus('pan'),
     },
     {
       key: 'mobile',
       label: 'Mobile Number',
       valA: recA.original_mobile || `Missing in ${recA.source_system || 'Source A'}`,
       valB: recB.original_mobile || `Missing in ${recB.source_system || 'Source B'}`,
-      similarity: (recA.original_mobile && recB.original_mobile) ? '100%' : 'N/A',
-      status: (!recA.original_mobile || !recB.original_mobile) ? 'MISSING' : recA.original_mobile === recB.original_mobile ? 'EXACT' : 'MISMATCH',
+      similarity: getFieldScore('mobile'),
+      status: getFieldStatus('mobile'),
     },
     {
       key: 'dob',
       label: 'Date of Birth',
       valA: recA.original_dob || '—',
       valB: recB.original_dob || '—',
-      similarity: '100%',
-      status: recA.original_dob === recB.original_dob ? 'EXACT' : (!recA.original_dob || !recB.original_dob) ? 'MISSING' : 'MISMATCH',
+      similarity: getFieldScore('dob'),
+      status: getFieldStatus('dob'),
     },
     {
       key: 'email',
       label: 'Email Address',
       valA: recA.original_email || '—',
       valB: recB.original_email || '—',
-      similarity: '85%',
-      status: recA.original_email === recB.original_email ? 'EXACT' : (!recA.original_email || !recB.original_email) ? 'MISSING' : 'SIMILAR',
+      similarity: getFieldScore('email'),
+      status: getFieldStatus('email'),
     },
     {
       key: 'city',
       label: 'City / Location',
       valA: recA.original_city || '—',
       valB: recB.original_city || '—',
-      similarity: '100%',
-      status: 'EXACT', // Normalized Bombay = Mumbai
+      similarity: getFieldScore('city'),
+      status: getFieldStatus('city'),
     },
   ];
 
@@ -148,21 +145,7 @@ export function MatchExplanationModal({ decision, reviewCase, onClose, onApprove
 
   // Generate dynamic explanation strictly from available fields
   const generateDynamicExplanation = () => {
-    const parts = [];
-    if (!hasPanConflict && recA.original_pan && recB.original_pan) {
-      parts.push('identical PAN number (' + recA.original_pan + ')');
-    }
-    if (recA.original_dob && recA.original_dob === recB.original_dob) {
-      parts.push('matching Date of Birth');
-    }
-    parts.push('high name similarity (96% Jaro-Winkler & 94% vector embedding)');
-    if (!recA.original_mobile || !recB.original_mobile) {
-      parts.push('one missing mobile value (treated as neutral context without penalty)');
-    }
-    if (hasPanConflict) {
-      return `HIGH-RISK CONFLICT: Name similarity (96%) and mobile match (100%) are strong, but PAN numbers conflict (${recA.original_pan} vs ${recB.original_pan}). Automatic merging was stopped to prevent erroneous identity fusion.`;
-    }
-    return `Strong match based on ${parts.join(', ')}. The available strong identifiers confirm high-confidence identity alignment across both source systems.`;
+    return reviewCase?.explanation?.summary || 'Explanation not available for this case.';
   };
 
   return (
@@ -218,9 +201,9 @@ export function MatchExplanationModal({ decision, reviewCase, onClose, onApprove
               {(ruleScore * 100).toFixed(0)}%
             </div>
             <div className="text-[11px] text-blue-700 space-y-0.5 font-medium">
-              <div>• PAN Match: {hasPanConflict ? '0%' : '100%'}</div>
-              <div>• Mobile: {!recA.original_mobile || !recB.original_mobile ? 'Missing (Neutral)' : '100%'}</div>
-              <div>• Name Similarity: 96%</div>
+              <div>• PAN Match: {decision?.pan_match === 1.0 ? '100%' : '0%'}</div>
+              <div>• Mobile: {decision?.mobile_match === 1.0 ? '100%' : '0%'}</div>
+              <div>• Name Similarity: {((decision?.name_similarity || 0) * 100).toFixed(0)}%</div>
             </div>
           </div>
 

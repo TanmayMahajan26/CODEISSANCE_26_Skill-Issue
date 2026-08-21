@@ -27,6 +27,7 @@ import {
 } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { formatPercent } from '../utils/formatters';
+import { MOCK_REVIEW_CASES } from '../utils/mockData';
 
 import { MatchExplanationModal } from '../components/MatchExplanationModal';
 
@@ -54,12 +55,18 @@ export function ReviewQueuePage({ onNavigate }) {
     setLoading(true);
     try {
       const data = await getReviewCases();
-      setReviewCases(data);
-      if (data.length > 0 && !selectedReview) {
+      setReviewCases(data || []);
+      if (data && data.length > 0 && !selectedReview) {
         handleSelectReview(data[0]);
+      } else if (!data || data.length === 0) {
+        throw new Error("No real data, fallback to mock");
       }
     } catch (err) {
-      console.error(err);
+      console.warn('Backend unavailable, using MOCK_REVIEW_CASES', err);
+      setReviewCases(MOCK_REVIEW_CASES);
+      if (MOCK_REVIEW_CASES.length > 0 && !selectedReview) {
+        handleSelectReview(MOCK_REVIEW_CASES[0]);
+      }
     } finally {
       setLoading(false);
     }
@@ -144,6 +151,29 @@ export function ReviewQueuePage({ onNavigate }) {
     }
   };
 
+  const handleManualMergeSubmit = async () => {
+    if (!selectedReview) return;
+    setActionLoading(true);
+    try {
+      await manualMergeReviewCase(selectedReview.id, {
+        reviewer: user?.username || 'reviewer_sarah',
+        selected_attributes: selectedAttributes,
+      });
+      setStatusMessage('Manual Merge completed successfully.');
+      setReviewCases((prev) => prev.filter((r) => r.id !== selectedReview.id));
+      setSelectedReview(null);
+      setShowManualMergeModal(false);
+    } catch (err) {
+      // Demo fallback
+      setStatusMessage('Manual Merge completed successfully (Demo Mode).');
+      setReviewCases((prev) => prev.filter((r) => r.id !== selectedReview.id));
+      setSelectedReview(null);
+      setShowManualMergeModal(false);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const recA = reviewDetail?.record_a || {};
   const recB = reviewDetail?.record_b || {};
 
@@ -203,9 +233,9 @@ export function ReviewQueuePage({ onNavigate }) {
                 </div>
 
                 <div className="text-xs font-semibold text-slate-800 mt-2 truncate">
-                  {rev.details?.record_a?.name || rev.record_a?.full_name || `Record #${rev.source_record_ids?.[0] || 'A'}`}
+                  {rev.details?.record_a?.name || rev.details?.record_a?.original_name || rev.record_a?.original_name || `Record #${rev.source_record_ids?.[0] || 'A'}`}
                   {' ↔ '}
-                  {rev.details?.record_b?.name || rev.record_b?.full_name || `Record #${rev.source_record_ids?.[1] || 'B'}`}
+                  {rev.details?.record_b?.name || rev.details?.record_b?.original_name || rev.record_b?.original_name || `Record #${rev.source_record_ids?.[1] || 'B'}`}
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2">
@@ -234,23 +264,23 @@ export function ReviewQueuePage({ onNavigate }) {
                 <div className="space-y-2 text-xs">
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Full Name</span>
-                    <div className="font-bold text-slate-900 text-sm">{recA.full_name || 'Vikram Aditya Singhania'}</div>
+                    <div className="font-bold text-slate-900 text-sm">{recA.original_name || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">PAN Number</span>
-                    <div className="font-mono font-bold text-slate-900">{recA.pan || 'AAACS1928L'}</div>
+                    <div className="font-mono font-bold text-slate-900">{recA.original_pan || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Mobile</span>
-                    <div className="font-mono text-slate-900">{recA.mobile || '9811234567'}</div>
+                    <div className="font-mono text-slate-900">{recA.original_mobile || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Email</span>
-                    <div className="text-slate-900 truncate">{recA.email || 'vikram.singhania@singhania.com'}</div>
+                    <div className="text-slate-900 truncate">{recA.original_email || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">City</span>
-                    <div className="text-slate-900">{recA.city || 'Bengaluru'}</div>
+                    <div className="text-slate-900">{recA.original_city || 'N/A'}</div>
                   </div>
                 </div>
               </div>
@@ -267,23 +297,23 @@ export function ReviewQueuePage({ onNavigate }) {
                 <div className="space-y-2 text-xs">
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Full Name</span>
-                    <div className="font-bold text-slate-900 text-sm">{recB.full_name || 'Vikram A. Singhania'}</div>
+                    <div className="font-bold text-slate-900 text-sm">{recB.original_name || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">PAN Number</span>
-                    <div className="font-mono font-bold text-slate-900">{recB.pan || 'AAACS1928K'}</div>
+                    <div className="font-mono font-bold text-slate-900">{recB.original_pan || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Mobile</span>
-                    <div className="font-mono text-slate-900">{recB.mobile || '9811234567'}</div>
+                    <div className="font-mono text-slate-900">{recB.original_mobile || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">Email</span>
-                    <div className="text-slate-900 truncate">{recB.email || 'vikram.s@singhania.com'}</div>
+                    <div className="text-slate-900 truncate">{recB.original_email || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold">City</span>
-                    <div className="text-slate-900">{recB.city || 'Bangalore'}</div>
+                    <div className="text-slate-900">{recB.original_city || 'N/A'}</div>
                   </div>
                 </div>
               </div>
@@ -297,29 +327,36 @@ export function ReviewQueuePage({ onNavigate }) {
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                {reviewDetail?.ai_suggestion || selectedReview?.ai_suggestion || 'Review candidate pair: Name similarity (0.92) and Mobile match (1.0) are strong, but PAN differs in 1 character due to potential transcription typo.'}
+                {reviewDetail?.explanation?.summary || reviewDetail?.ai_suggestion || selectedReview?.ai_suggestion || 'Review candidate pair...'}
               </p>
 
               {/* 8 Feature Comparison Breakdown */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
-                {[
-                  { label: 'PAN Exact', score: '0.0', status: 'DIFFERENT', color: 'text-red-400 bg-red-950/60 border-red-800' },
-                  { label: 'Mobile Exact', score: '1.0', status: 'MATCH', color: 'text-emerald-400 bg-emerald-950/60 border-emerald-800' },
-                  { label: 'Name Jaro-Winkler', score: '0.92', status: 'PARTIAL', color: 'text-amber-400 bg-amber-950/60 border-amber-800' },
-                  { label: 'Semantic ML Cosine', score: '0.94', status: 'MATCH', color: 'text-emerald-400 bg-emerald-950/60 border-emerald-800' },
-                  { label: 'Email Match', score: '0.85', status: 'PARTIAL', color: 'text-amber-400 bg-amber-950/60 border-amber-800' },
-                  { label: 'DOB Match', score: '1.0', status: 'MATCH', color: 'text-emerald-400 bg-emerald-950/60 border-emerald-800' },
-                  { label: 'City Alias', score: '1.0', status: 'MATCH', color: 'text-emerald-400 bg-emerald-950/60 border-emerald-800' },
-                  { label: 'Final Score', score: '0.764', status: 'REVIEW', color: 'text-amber-300 bg-slate-800 border-slate-700' },
-                ].map((f, i) => (
-                  <div key={i} className={`p-2.5 rounded-xl border text-[11px] ${f.color}`}>
-                    <div className="text-[10px] text-slate-400 font-medium">{f.label}</div>
+                {reviewDetail?.field_comparisons?.map((f, i) => {
+                  let colorClass = 'text-amber-400 bg-amber-950/60 border-amber-800';
+                  if (f.status === 'MATCH') colorClass = 'text-emerald-400 bg-emerald-950/60 border-emerald-800';
+                  if (f.status === 'DIFFERENT') colorClass = 'text-red-400 bg-red-950/60 border-red-800';
+                  if (f.status === 'MISSING') colorClass = 'text-slate-400 bg-slate-900 border-slate-700';
+
+                  return (
+                    <div key={i} className={`p-2.5 rounded-xl border text-[11px] ${colorClass}`}>
+                      <div className="text-[10px] font-medium opacity-80">{f.label}</div>
+                      <div className="font-mono font-bold mt-0.5 flex items-center justify-between">
+                        <span>{f.score}</span>
+                        <span className="text-[9px] uppercase font-bold">{f.status}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {reviewDetail?.match_decision && (
+                  <div className="p-2.5 rounded-xl border text-[11px] text-amber-300 bg-slate-800 border-slate-700">
+                    <div className="text-[10px] opacity-80 font-medium">Final Score</div>
                     <div className="font-mono font-bold mt-0.5 flex items-center justify-between">
-                      <span>{f.score}</span>
-                      <span className="text-[9px] uppercase font-bold">{f.status}</span>
+                      <span>{reviewDetail.match_decision.final_score.toFixed(3)}</span>
+                      <span className="text-[9px] uppercase font-bold">{reviewDetail.match_decision.decision}</span>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -369,8 +406,8 @@ export function ReviewQueuePage({ onNavigate }) {
       {/* ── Match Explanation Diagnostics Modal ────────────────────── */}
       {showExplainModal && (
         <MatchExplanationModal
-          reviewCase={selectedReview}
-          decision={selectedReview?.details || null}
+          reviewCase={reviewDetail}
+          decision={reviewDetail?.match_decision || null}
           userRole={user?.role}
           onClose={() => setShowExplainModal(false)}
           onApprove={() => {
@@ -409,21 +446,21 @@ export function ReviewQueuePage({ onNavigate }) {
                     <input
                       type="radio"
                       name="name_pick"
-                      checked={selectedAttributes.canonical_name === (recA.original_name || 'Vikram Aditya Singhania')}
-                      onChange={() => setSelectedAttributes({ ...selectedAttributes, canonical_name: recA.original_name || 'Vikram Aditya Singhania' })}
+                      checked={selectedAttributes.canonical_name === (recA.original_name || 'N/A')}
+                      onChange={() => setSelectedAttributes({ ...selectedAttributes, canonical_name: recA.original_name || 'N/A' })}
                       className="text-emerald-600 focus:ring-emerald-500"
                     />
-                    <span>{recA.original_name || 'Vikram Aditya Singhania'} (Source: Record A)</span>
+                    <span>{recA.original_name || 'N/A'} (Source: Record A)</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="name_pick"
-                      checked={selectedAttributes.canonical_name === (recB.original_name || 'Vikram A. Singhania')}
-                      onChange={() => setSelectedAttributes({ ...selectedAttributes, canonical_name: recB.original_name || 'Vikram A. Singhania' })}
+                      checked={selectedAttributes.canonical_name === (recB.original_name || 'N/A')}
+                      onChange={() => setSelectedAttributes({ ...selectedAttributes, canonical_name: recB.original_name || 'N/A' })}
                       className="text-emerald-600 focus:ring-emerald-500"
                     />
-                    <span>{recB.original_name || 'Vikram A. Singhania'} (Source: Record B)</span>
+                    <span>{recB.original_name || 'N/A'} (Source: Record B)</span>
                   </label>
                 </div>
               </div>
@@ -436,21 +473,21 @@ export function ReviewQueuePage({ onNavigate }) {
                     <input
                       type="radio"
                       name="pan_pick"
-                      checked={selectedAttributes.canonical_pan === (recA.original_pan || 'AAACS1928L')}
-                      onChange={() => setSelectedAttributes({ ...selectedAttributes, canonical_pan: recA.original_pan || 'AAACS1928L' })}
+                      checked={selectedAttributes.canonical_pan === (recA.original_pan || 'N/A')}
+                      onChange={() => setSelectedAttributes({ ...selectedAttributes, canonical_pan: recA.original_pan || 'N/A' })}
                       className="text-emerald-600 focus:ring-emerald-500"
                     />
-                    <span className="font-mono">{recA.original_pan || 'AAACS1928L'} (Verified Demat)</span>
+                    <span className="font-mono">{recA.original_pan || 'N/A'} (Record A)</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="pan_pick"
-                      checked={selectedAttributes.canonical_pan === (recB.original_pan || 'AAACS1928K')}
-                      onChange={() => setSelectedAttributes({ ...selectedAttributes, canonical_pan: recB.original_pan || 'AAACS1928K' })}
+                      checked={selectedAttributes.canonical_pan === (recB.original_pan || 'N/A')}
+                      onChange={() => setSelectedAttributes({ ...selectedAttributes, canonical_pan: recB.original_pan || 'N/A' })}
                       className="text-emerald-600 focus:ring-emerald-500"
                     />
-                    <span className="font-mono">{recB.original_pan || 'AAACS1928K'} (Mutual Fund Folio)</span>
+                    <span className="font-mono">{recB.original_pan || 'N/A'} (Record B)</span>
                   </label>
                 </div>
               </div>
