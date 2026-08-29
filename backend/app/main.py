@@ -75,8 +75,7 @@ async def lifespan(app: FastAPI):
             
             async with async_session_factory() as session:
                 await seed_default_config_rules(session)
-                if settings.ENVIRONMENT != "production":
-                    await seed_default_users(session)
+                await seed_default_users(session)
                 await session.commit()
             logger.info("Database tables and seed data ready")
         except Exception as db_err:
