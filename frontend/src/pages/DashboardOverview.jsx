@@ -69,7 +69,7 @@ export function DashboardOverview({ onNavigate }) {
 
   if (error) {
     return (
-      <div className="p-8 max-w-7xl mx-auto">
+      <div className="p-3 sm:p-5 lg:p-8 max-w-7xl mx-auto">
         <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 flex-shrink-0" />
           <p className="font-medium">{error}</p>
@@ -80,7 +80,7 @@ export function DashboardOverview({ onNavigate }) {
   }
 
   return (
-    <div className="p-6 sm:p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-5 lg:p-8 space-y-8 max-w-7xl mx-auto">
       {/* ── Top Welcome ──────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>

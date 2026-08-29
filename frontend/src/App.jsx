@@ -21,6 +21,13 @@ import { NexusAIChat } from './components/NexusAIChat';
 export default function App() {
   const { user } = useAuth();
   const [currentTab, setCurrentTab] = useState('landing');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Close mobile menu when navigating to a new tab
+  const handleSelectTab = (tab) => {
+    setCurrentTab(tab);
+    setIsMobileMenuOpen(false);
+  };
 
   // Handle keyboard shortcut '/' to jump to Customer 360 search
   useEffect(() => {
@@ -129,7 +136,7 @@ export default function App() {
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Left Navigation Sidebar */}
-      <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
+      <Sidebar currentTab={currentTab} onSelectTab={handleSelectTab} isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -137,7 +144,8 @@ export default function App() {
         <Topbar
           title={currentHeader.title}
           subtitle={currentHeader.subtitle}
-          onSearchClick={() => setCurrentTab('customers')}
+          onSearchClick={() => handleSelectTab('customers')}
+          onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         />
 
         {/* Dynamic Page Module Container */}
@@ -147,7 +155,7 @@ export default function App() {
       </div>
 
       {/* Reusable Nexus AI Institutional Assistant */}
-      <NexusAIChat currentTab={currentTab} />
+      <NexusAIChat currentTab={currentTab} onNavigate={handleSelectTab} />
     </div>
   );
 }

@@ -14,11 +14,12 @@ import {
   TrendingUp,
   ChevronDown,
   ChevronRight,
-  Network
+  Network,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-export function Sidebar({ currentTab, onSelectTab }) {
+export function Sidebar({ currentTab, onSelectTab, isMobileMenuOpen, setIsMobileMenuOpen }) {
   const { user, switchDemoRole } = useAuth();
   const role = user?.role || 'ADMIN';
   const [adminOpen, setAdminOpen] = useState(false);
@@ -92,25 +93,34 @@ export function Sidebar({ currentTab, onSelectTab }) {
     );
   };
 
-  return (
-    <aside className="w-64 bg-navy-950 text-white flex flex-col shrink-0 border-r border-slate-800 select-none h-full overflow-y-auto">
+  const sidebarContent = (
+    <>
       {/* ── Brand Logo ───────────────────────────────────────────── */}
       <div>
         <div
           onClick={() => onSelectTab('landing')}
-          className="h-20 px-6 flex items-center gap-3 border-b border-slate-800/80 cursor-pointer hover:bg-navy-900/50 transition-colors"
+          className="h-20 px-6 flex items-center justify-between border-b border-slate-800/80 cursor-pointer hover:bg-navy-900/50 transition-colors"
         >
-          <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center shadow-subtle">
-            <Compass className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <div className="text-lg font-bold tracking-tight font-display text-white">
-              Nexus<span className="text-emerald-400">360</span>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center shadow-subtle">
+              <Compass className="w-5 h-5 text-white" />
             </div>
-            <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider -mt-0.5">
-              Financial Intelligence
+            <div>
+              <div className="text-lg font-bold tracking-tight font-display text-white">
+                Nexus<span className="text-emerald-400">360</span>
+              </div>
+              <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider -mt-0.5">
+                Financial Intelligence
+              </div>
             </div>
           </div>
+          {/* Close button on mobile */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsMobileMenuOpen(false); }}
+            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* ── Navigation Menu ──────────────────────────────────────── */}
@@ -176,6 +186,32 @@ export function Sidebar({ currentTab, onSelectTab }) {
           <ChevronDown className="w-4 h-4" />
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile backdrop overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — fixed drawer on mobile, static on desktop */}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 w-72 bg-navy-950 text-white flex flex-col shrink-0 border-r border-slate-800 select-none overflow-y-auto
+          transform transition-transform duration-300 ease-in-out
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:relative md:translate-x-0 md:w-64 md:transition-none
+        `}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
+
+

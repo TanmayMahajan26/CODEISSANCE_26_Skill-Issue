@@ -6,24 +6,34 @@ import {
   ExternalLink,
   ShieldCheck,
   Zap,
+  Menu,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ChevronDown, LogOut } from 'lucide-react';
 
-export function Topbar({ title, subtitle, onSearchClick }) {
+export function Topbar({ title, subtitle, onSearchClick, onToggleMobileMenu }) {
   const { user, backendStatus, switchDemoRole, logout } = useAuth();
   const [showRoleMenu, setShowRoleMenu] = React.useState(false);
 
   return (
-    <header className="h-20 bg-white border-b border-slate-200 px-6 sm:px-8 flex items-center justify-between shrink-0 select-none">
-      {/* ── Title & Breadcrumb ───────────────────────────────────── */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight font-display">{title}</h1>
-        {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+    <header className="h-16 md:h-20 bg-white border-b border-slate-200 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 select-none gap-2">
+      {/* ── Hamburger + Title ───────────────────────────────────── */}
+      <div className="flex items-center gap-2 md:gap-0 min-w-0">
+        {/* Mobile hamburger */}
+        <button
+          onClick={onToggleMobileMenu}
+          className="md:hidden p-2 -ml-1 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors shrink-0"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <div className="min-w-0">
+          <h1 className="text-base md:text-xl font-bold text-slate-900 tracking-tight font-display truncate">{title}</h1>
+          {subtitle && <p className="text-[10px] md:text-xs text-slate-500 mt-0.5 truncate hidden sm:block">{subtitle}</p>}
+        </div>
       </div>
 
       {/* ── Right Actions & Status ──────────────────────────────── */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         {/* Universal Customer Search Bar */}
         <div
           onClick={onSearchClick}
