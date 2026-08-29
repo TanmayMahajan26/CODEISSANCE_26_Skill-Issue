@@ -16,12 +16,14 @@ from app.models import (
     OpportunityType, OpportunityStatus, AuditAction
 )
 from app.models.review_case import VerificationClassification, VerificationStatus
+from app.models.identity_link import IdentityLink, MatchMethod, LinkStatus
 
 async def clear_database(session):
     await session.execute(text("DELETE FROM audit_logs"))
     await session.execute(text("DELETE FROM opportunities"))
     await session.execute(text("DELETE FROM review_cases"))
     await session.execute(text("DELETE FROM match_decisions"))
+    await session.execute(text("DELETE FROM identity_links"))
     await session.execute(text("DELETE FROM source_records"))
     await session.execute(text("DELETE FROM golden_customers"))
     await session.commit()
@@ -59,6 +61,9 @@ async def seed_data():
         )
         session.add_all([sr_rohit_eq, sr_rohit_mf, sr_rohit_wl])
         await session.flush()
+        
+        for sr in [sr_rohit_eq, sr_rohit_mf, sr_rohit_wl]:
+            session.add(IdentityLink(source_record_id=sr.id, golden_customer_id=rohit.golden_customer_id, match_confidence=0.97, status=LinkStatus.MATCH, match_method=MatchMethod.DETERMINISTIC))
 
         md_rohit = MatchDecision(
             record_a_id=sr_rohit_eq.id, record_b_id=sr_rohit_mf.id, decision=Decision.MATCH, final_score=0.97,
@@ -86,6 +91,9 @@ async def seed_data():
         sr_sun_ins = SourceRecord(source_system=SourceSystem.INSURANCE, source_record_id="INS-S-01", original_name="S. Mehra", original_pan="BKMPM1920P", original_mobile="+91-98220-12345", original_email="sunita.mehra@example.demo")
         session.add_all([sr_sun_wl, sr_sun_mf, sr_sun_ins])
         await session.flush()
+        
+        for sr in [sr_sun_wl, sr_sun_mf, sr_sun_ins]:
+            session.add(IdentityLink(source_record_id=sr.id, golden_customer_id=sunita.golden_customer_id, match_confidence=0.89, status=LinkStatus.MATCH, match_method=MatchMethod.DETERMINISTIC))
 
         md_sun = MatchDecision(
             record_a_id=sr_sun_wl.id, record_b_id=sr_sun_mf.id, decision=Decision.MATCH, final_score=0.89,
@@ -121,6 +129,9 @@ async def seed_data():
         sr_vik_mf = SourceRecord(source_system=SourceSystem.MUTUAL_FUND, source_record_id="MF-V-01", original_name="Vikram A. Singhania", original_pan="AAACS1928K", original_mobile="9811234567", original_dob=date(1985,6,12), original_city="Bangalore")
         session.add_all([sr_vik_eq, sr_vik_mf])
         await session.flush()
+        
+        for sr in [sr_vik_eq, sr_vik_mf]:
+            session.add(IdentityLink(source_record_id=sr.id, golden_customer_id=vikram.golden_customer_id, match_confidence=0.76, status=LinkStatus.REVIEW, match_method=MatchMethod.DETERMINISTIC))
 
         md_vik = MatchDecision(
             record_a_id=sr_vik_eq.id, record_b_id=sr_vik_mf.id, decision=Decision.REVIEW, final_score=0.76,
@@ -153,6 +164,9 @@ async def seed_data():
         sr_an_eq = SourceRecord(source_system=SourceSystem.EQUITY, source_record_id="EQ-A-01", original_name="Ananya S. Shah", original_pan="PQRSX4567M", original_mobile="9876543210")
         session.add_all([sr_an_ins, sr_an_eq])
         await session.flush()
+        
+        for sr in [sr_an_ins, sr_an_eq]:
+            session.add(IdentityLink(source_record_id=sr.id, golden_customer_id=ananya.golden_customer_id, match_confidence=0.94, status=LinkStatus.REVIEW, match_method=MatchMethod.DETERMINISTIC))
 
         md_an = MatchDecision(
             record_a_id=sr_an_ins.id, record_b_id=sr_an_eq.id, decision=Decision.REVIEW, final_score=0.94,
@@ -179,6 +193,9 @@ async def seed_data():
         sr_arj_2 = SourceRecord(source_system=SourceSystem.WEALTH, source_record_id="WL-A-02", original_name="Arjun Malhotra", original_pan="LMNOP6789Q", original_mobile="9988776605")
         session.add_all([sr_arj_1, sr_arj_2])
         await session.flush()
+        
+        for sr in [sr_arj_1, sr_arj_2]:
+            session.add(IdentityLink(source_record_id=sr.id, golden_customer_id=arjun.golden_customer_id, match_confidence=0.82, status=LinkStatus.REVIEW, match_method=MatchMethod.DETERMINISTIC))
 
         md_arj = MatchDecision(
             record_a_id=sr_arj_1.id, record_b_id=sr_arj_2.id, decision=Decision.REVIEW, final_score=0.82,
@@ -205,6 +222,9 @@ async def seed_data():
         sr_priya_2 = SourceRecord(source_system=SourceSystem.LOAN, source_record_id="LN-P-01", original_name="Priya A. Iyer", original_pan="IYERX1234D", original_mobile="9123456780")
         session.add_all([sr_priya_1, sr_priya_2])
         await session.flush()
+        
+        for sr in [sr_priya_1, sr_priya_2]:
+            session.add(IdentityLink(source_record_id=sr.id, golden_customer_id=priya.golden_customer_id, match_confidence=0.74, status=LinkStatus.REVIEW, match_method=MatchMethod.DETERMINISTIC))
 
         md_priya = MatchDecision(
             record_a_id=sr_priya_1.id, record_b_id=sr_priya_2.id, decision=Decision.REVIEW, final_score=0.74, 
@@ -247,6 +267,9 @@ async def seed_data():
         sr_meera_2 = SourceRecord(source_system=SourceSystem.LOAN, source_record_id="LN-M-01", original_name="Mira Deshpande", original_pan="DESHP4321M", original_mobile="9765432109", original_email="meera.d@example.demo")
         session.add_all([sr_meera_1, sr_meera_2])
         await session.flush()
+        
+        for sr in [sr_meera_1, sr_meera_2]:
+            session.add(IdentityLink(source_record_id=sr.id, golden_customer_id=meera.golden_customer_id, match_confidence=0.96, status=LinkStatus.MATCH, match_method=MatchMethod.DETERMINISTIC))
 
         md_meera = MatchDecision(
             record_a_id=sr_meera_1.id, record_b_id=sr_meera_2.id, decision=Decision.MATCH, final_score=0.96,
@@ -265,6 +288,9 @@ async def seed_data():
         sr_kavita_2 = SourceRecord(source_system=SourceSystem.WEALTH, source_record_id="WL-K-01", original_name="Kavitha Joshi", original_pan="JOSHI2468K", original_mobile="9898989898")
         session.add_all([sr_kavita_1, sr_kavita_2])
         await session.flush()
+        
+        for sr in [sr_kavita_1, sr_kavita_2]:
+            session.add(IdentityLink(source_record_id=sr.id, golden_customer_id=kavita.golden_customer_id, match_confidence=0.98, status=LinkStatus.MATCH, match_method=MatchMethod.DETERMINISTIC))
 
         md_kavita = MatchDecision(
             record_a_id=sr_kavita_1.id, record_b_id=sr_kavita_2.id, decision=Decision.MATCH, final_score=0.98,
@@ -283,6 +309,9 @@ async def seed_data():
         sr_sameer_2 = SourceRecord(source_system=SourceSystem.LOAN, source_record_id="LN-S-02", original_name="Samir Khan", original_pan="KHANS1357P", original_mobile="9876501234")
         session.add_all([sr_sameer_1, sr_sameer_2])
         await session.flush()
+        
+        for sr in [sr_sameer_1, sr_sameer_2]:
+            session.add(IdentityLink(source_record_id=sr.id, golden_customer_id=sameer.golden_customer_id, match_confidence=0.90, status=LinkStatus.REVIEW, match_method=MatchMethod.DETERMINISTIC))
 
         md_sameer = MatchDecision(
             record_a_id=sr_sameer_1.id, record_b_id=sr_sameer_2.id, decision=Decision.REVIEW, final_score=0.90,
