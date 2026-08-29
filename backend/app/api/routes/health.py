@@ -33,7 +33,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         "timestamp": datetime.utcnow().isoformat(),
     }
 
-@router.post("/reset-demo", summary="Reset Demo Data")
+@router.post("/health/reset-demo", summary="Reset Demo Data")
 async def reset_demo_data():
     """
     Safely resets the database to the original seeded hackathon demo state.
