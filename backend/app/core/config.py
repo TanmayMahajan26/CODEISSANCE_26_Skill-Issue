@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     TWILIO_CONTENT_SID: str = "HXfe5ab5f00277942d4d4200328b4d403c"
 
     # ── CORS Settings ────────────────────────────────────────────
+    CORS_ORIGINS: str = ""
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
@@ -50,6 +51,14 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8000",
     ]
+
+    @property
+    def all_cors_origins(self) -> List[str]:
+        origins = set(self.ALLOWED_ORIGINS)
+        if self.CORS_ORIGINS:
+            for origin in self.CORS_ORIGINS.split(","):
+                origins.add(origin.strip())
+        return list(origins)
 
     # ── File Upload / Ingestion Limits ───────────────────────────
     MAX_UPLOAD_SIZE_MB: int = 10
