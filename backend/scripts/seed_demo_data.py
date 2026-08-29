@@ -104,7 +104,7 @@ async def seed_data():
         session.add(rev_sun)
 
         opp_sun = Opportunity(
-            golden_customer_id=sunita.id, opportunity_type=OpportunityType.UPSELL, product_recommended="Structured Debt & Loan Against Securities", potential_value=150000, score=0.88, status=OpportunityStatus.NEW
+            golden_customer_id=sunita.golden_customer_id, opportunity_type=OpportunityType.UPSELL, product_recommended="Structured Debt & Loan Against Securities", potential_value=150000, score=0.88, status=OpportunityStatus.NEW
         )
         session.add(opp_sun)
 
@@ -138,7 +138,7 @@ async def seed_data():
         session.add(rev_vik)
 
         opp_vik = Opportunity(
-            golden_customer_id=vikram.id, opportunity_type=OpportunityType.PROTECTION, product_recommended="Keyman Insurance & Corporate Trust", potential_value=20000000, score=0.85, status=OpportunityStatus.NEW
+            golden_customer_id=vikram.golden_customer_id, opportunity_type=OpportunityType.PROTECTION, product_recommended="Keyman Insurance & Corporate Trust", potential_value=20000000, score=0.85, status=OpportunityStatus.NEW
         )
         session.add(opp_vik)
 
